@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>İklim Life | Profesyonel Takip</title>
+    <title>İklim Life | Bulut Takip</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -17,7 +17,7 @@
         .nav-btn.active { background: white; color: var(--primary); }
         .content { padding: 20px; flex: 1; }
         .hidden { display: none !important; }
-        input { width: 100%; padding: 15px; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 1.1rem; margin-bottom: 15px; text-align: center; }
+        input { width: 100%; padding: 15px; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 1.1rem; margin-bottom: 15px; text-align: center; width: 100%; box-sizing: border-box; }
         .btn-main { width: 100%; padding: 16px; border: none; border-radius: 12px; font-weight: 700; cursor: pointer; }
         .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
         .btn-act { padding: 25px 10px; border-radius: 15px; border: none; color: white; font-weight: 700; display: flex; flex-direction: column; align-items: center; gap: 10px; cursor: pointer; }
@@ -27,7 +27,7 @@
         .bg-mola-off { background: var(--accent); }
         #reader { width: 100%; border-radius: 20px; overflow: hidden; border: 4px solid var(--accent); margin-top: 10px; }
         table { width: 100%; border-collapse: collapse; font-size: 0.75rem; margin-top: 15px; }
-        th, td { padding: 8px; border-bottom: 1px solid #eee; text-align: left; }
+        th, td { padding: 8px; border: 1px solid #ddd; text-align: center; }
         th { background: #f1f5f9; }
     </style>
 </head>
@@ -54,22 +54,35 @@
                 <button class="btn-act bg-break" onclick="triggerQR('Mola Başlat')">☕<br>Mola Başla</button>
                 <button class="btn-act bg-mola-off" onclick="triggerQR('Mola Bitir')">✅<br>Mola Bitir</button>
             </div>
-            <button class="btn-main" style="background:#f1f5f9; margin-top:20px;" onclick="secureLogout()">Çıkış</button>
+            <button class="btn-main" style="background:#f1f5f9; margin-top:20px;" onclick="secureLogout()">Güvenli Çıkış</button>
         </div>
 
-        <div id="view-qr" class="hidden"><div id="reader"></div></div>
+        <div id="view-qr" class="hidden">
+            <div id="reader"></div>
+            <button class="btn-main" style="background:var(--danger); color:white; margin-top:10px;" onclick="cancelAction()">İptal</button>
+        </div>
 
         <div id="view-admin" class="hidden">
             <div id="admin-gate">
-                <input type="password" id="adminKey" placeholder="Şifre">
-                <button class="btn-main" onclick="unlockAdmin()">Giriş</button>
+                <input type="password" id="adminKey" placeholder="Yönetici Şifresi">
+                <button class="btn-main" style="background:var(--primary); color:white;" onclick="unlockAdmin()">Paneli Aç</button>
             </div>
             <div id="admin-data" class="hidden">
-                <div style="display:flex; gap:5px;">
+                <div style="display:flex; gap:5px; margin-bottom:10px;">
                     <button class="btn-main" style="background:var(--success); color:white; flex:2" onclick="exportExcel()">Excel İndir</button>
                     <button class="btn-main" style="background:var(--danger); color:white; flex:1" onclick="clearLogs()">Temizle</button>
                 </div>
-                <div style="overflow-x:auto;"><table id="adminTable"><thead></thead><tbody id="logTableBody"></tbody></table></div>
+                <div style="overflow-x:auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Tarih</th><th>İsim</th><th>Giriş</th><th>M.Başla</th><th>M.Bitir</th><th>Çıkış</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logTableBody"></tbody>
+                    </table>
+                </div>
+                <button class="btn-main" style="background:#f1f5f9; margin-top:15px;" onclick="lockAdmin()">Kapat</button>
             </div>
         </div>
     </div>
@@ -101,7 +114,7 @@
     function processLogin() {
         const p = document.getElementById('pinCode').value;
         if(STORE.STAFF[p]) { currentUser=STORE.STAFF[p]; document.getElementById('userName').innerText=currentUser; showView('staff'); }
-        else alert("Hatalı!");
+        else alert("Hatalı PIN!");
     }
 
     function triggerQR(a) {
@@ -111,60 +124,64 @@
             if(t===STORE.CODE) {
                 scanner.stop();
                 const d = new Date();
-                db.ref('logs').push({
+                const log = {
                     date: d.toLocaleDateString('tr-TR'),
                     user: currentUser,
                     type: a,
                     time: d.getHours().toString().padStart(2,'0')+":"+d.getMinutes().toString().padStart(2,'0'),
                     ts: Date.now()
-                }).then(()=>{ alert("Kaydedildi"); secureLogout(); });
+                };
+                db.ref('logs').push(log).then(()=>{ alert("İşlem Başarılı"); secureLogout(); });
             }
         });
     }
+
+    function cancelAction() { scanner.stop(); showView('staff'); }
 
     function unlockAdmin() {
         if(document.getElementById('adminKey').value===STORE.PASS) {
             document.getElementById('admin-gate').classList.add('hidden');
             document.getElementById('admin-data').classList.remove('hidden');
             db.ref('logs').on('value', s => {
-                const logs = [];
-                s.forEach(c => { logs.push(c.val()); });
-                renderTable(logs);
+                const rawLogs = [];
+                s.forEach(c => rawLogs.push(c.val()));
+                const processed = processLogs(rawLogs);
+                updateUI(processed);
             });
         }
     }
 
-    function renderTable(logs) {
-        const report = processLogs(logs);
-        const body = document.getElementById('logTableBody');
-        body.innerHTML = "";
-        report.forEach(r => {
-            body.innerHTML += `<tr><td>${r.Tarih}</td><td>${r.İsim}</td><td>${r.Giriş || '-'}</td><td>${r.M_Başla || '-'}</td><td>${r.M_Bitir || '-'}</td><td>${r.Çıkış || '-'}</td></tr>`;
+    function processLogs(logs) {
+        const daily = {};
+        logs.forEach(l => {
+            const id = `${l.date}_${l.user}`;
+            if(!daily[id]) daily[id] = { Tarih: l.date, İsim: l.user, Giriş: "-", M_Başla: "-", M_Bitir: "-", Çıkış: "-" };
+            if(l.type === "İşe Giriş") daily[id].Giriş = l.time;
+            if(l.type === "Mola Başlat") daily[id].M_Başla = l.time;
+            if(l.type === "Mola Bitir") daily[id].M_Bitir = l.time;
+            if(l.type === "İşten Çıkış") daily[id].Çıkış = l.time;
         });
-        window.currentReport = report;
+        return Object.values(daily).sort((a,b) => b.Tarih.localeCompare(a.Tarih));
     }
 
-    function processLogs(logs) {
-        const grouped = {};
-        logs.forEach(l => {
-            const key = `${l.date}_${l.user}`;
-            if(!grouped[key]) grouped[key] = { Tarih: l.date, İsim: l.user, Giriş:'', M_Başla:'', M_Bitir:'', Çıkış:'' };
-            if(l.type==='İşe Giriş') grouped[key].Giriş = l.time;
-            if(l.type==='Mola Başlat') grouped[key].M_Başla = l.time;
-            if(l.type==='Mola Bitir') grouped[key].M_Bitir = l.time;
-            if(l.type==='İşten Çıkış') grouped[key].Çıkış = l.time;
+    function updateUI(data) {
+        const body = document.getElementById('logTableBody');
+        body.innerHTML = "";
+        data.forEach(r => {
+            body.innerHTML += `<tr><td>${r.Tarih}</td><td>${r.İsim}</td><td>${r.Giriş}</td><td>${r.M_Başla}</td><td>${r.M_Bitir}</td><td>${r.Çıkış}</td></tr>`;
         });
-        return Object.values(grouped).reverse();
+        window.lastData = data;
     }
 
     function exportExcel() {
-        const ws = XLSX.utils.json_to_sheet(window.currentReport);
+        const ws = XLSX.utils.json_to_sheet(window.lastData);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Rapor");
+        XLSX.utils.book_append_sheet(wb, ws, "Günlük Takip");
         XLSX.writeFile(wb, "Iklim_Life_Rapor.xlsx");
     }
 
-    function clearLogs() { if(confirm("Tüm bulut verileri silinsin mi?")) db.ref('logs').set(null); }
+    function clearLogs() { if(confirm("Buluttaki tüm geçmiş silinsin mi?")) db.ref('logs').set(null); }
+    function lockAdmin() { document.getElementById('adminKey').value=""; document.getElementById('admin-gate').classList.remove('hidden'); document.getElementById('admin-data').classList.add('hidden'); }
     function secureLogout() { currentUser=null; document.getElementById('pinCode').value=""; showView('staff'); }
 </script>
 </body>

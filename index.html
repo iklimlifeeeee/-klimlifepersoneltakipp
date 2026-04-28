@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>İklim Life | Profesyonel Bulut Takip</title>
+    <title>İklim Life | Kesin Bulut Takip</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -12,30 +12,23 @@
         :root { --primary: #1e293b; --accent: #f59e0b; --success: #10b981; --danger: #ef4444; --info: #3b82f6; --bg-gray: #f8fafc; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg-gray); margin: 0; display: flex; justify-content: center; }
         .app-container { width: 100%; max-width: 440px; background: white; min-height: 100vh; display: flex; flex-direction: column; box-shadow: 0 0 20px rgba(0,0,0,0.1); }
-        
-        /* Orijinal İskelet Tasarım Başlangıcı */
         .nav-header { display: flex; background: var(--primary); padding: 15px; gap: 10px; }
         .nav-btn { flex: 1; padding: 12px; border: none; background: rgba(255,255,255,0.1); color: white; border-radius: 8px; font-weight: 600; cursor: pointer; }
         .nav-btn.active { background: white; color: var(--primary); }
         .content { padding: 20px; flex: 1; }
         .hidden { display: none !important; }
-        
         input { width: 100%; padding: 15px; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 1.1rem; margin-bottom: 15px; text-align: center; box-sizing: border-box; }
-        .btn-main { width: 100%; padding: 16px; border: none; border-radius: 12px; font-weight: 700; cursor: pointer; transition: 0.2s; }
-        
+        .btn-main { width: 100%; padding: 16px; border: none; border-radius: 12px; font-weight: 700; cursor: pointer; }
         .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 10px; }
         .btn-act { padding: 25px 10px; border-radius: 15px; border: none; color: white; font-weight: 700; display: flex; flex-direction: column; align-items: center; gap: 10px; cursor: pointer; font-size: 1rem; }
         .bg-work { background: var(--info); }
         .bg-break { background: var(--success); }
         .bg-off { background: var(--primary); }
         .bg-mola-off { background: var(--accent); }
-        
         #reader { width: 100%; border-radius: 20px; overflow: hidden; border: 4px solid var(--accent); margin-top: 10px; }
-        
         table { width: 100%; border-collapse: collapse; font-size: 0.7rem; margin-top: 15px; }
         th, td { padding: 8px 4px; border: 1px solid #e2e8f0; text-align: center; }
         th { background: #f1f5f9; font-weight: 700; }
-        /* Tasarım Sonu */
     </style>
 </head>
 <body>
@@ -98,7 +91,6 @@
 </div>
 
 <script>
-    // Firebase Yapılandırması (Senin Bilgilerin)
     const firebaseConfig = {
       apiKey: "AIzaSyCpgQk-EhcjrsTv685nWM_FlpTFIQBHL5Q",
       authDomain: "iklimlifetakip-c7461.firebaseapp.com",
@@ -119,10 +111,8 @@
         ['view-login','view-panel','view-qr','view-admin'].forEach(i=>document.getElementById(i).classList.add('hidden'));
         if(v==='staff') currentUser ? document.getElementById('view-panel').classList.remove('hidden') : document.getElementById('view-login').classList.remove('hidden');
         else document.getElementById('view-admin').classList.remove('hidden');
-        const btnStaff = document.getElementById('t-staff');
-        const btnAdmin = document.getElementById('t-admin');
-        btnStaff.classList.toggle('active', v==='staff');
-        btnAdmin.classList.toggle('active', v==='admin');
+        document.getElementById('t-staff').classList.toggle('active', v==='staff');
+        document.getElementById('t-admin').classList.toggle('active', v==='admin');
     }
 
     function processLogin() {
@@ -136,34 +126,33 @@
         document.getElementById('view-qr').classList.remove('hidden');
         scanner.start({facingMode:"environment"}, {fps:10, qrbox:250}, t=>{
             if(t===STORE.CODE) {
-                scanner.stop();
-                const d = new Date();
-                const log = {
-                    date: d.toLocaleDateString('tr-TR'),
-                    user: currentUser,
-                    type: a,
-                    time: d.getHours().toString().padStart(2,'0')+":"+d.getMinutes().toString().padStart(2,'0'),
-                    ts: Date.now()
-                };
-                db.ref('logs').push(log).then(()=>{ alert("İşlem Başarılı"); secureLogout(); });
+                scanner.stop().then(() => {
+                    const d = new Date();
+                    db.ref('logs').push({
+                        date: d.toLocaleDateString('tr-TR'),
+                        user: currentUser,
+                        type: a,
+                        time: d.getHours().toString().padStart(2,'0')+":"+d.getMinutes().toString().padStart(2,'0'),
+                        ts: Date.now()
+                    }).then(()=>{ alert("Kaydedildi!"); secureLogout(); });
+                });
             }
         });
     }
 
-    function cancelAction() { scanner.stop(); showView('staff'); }
+    function cancelAction() { scanner.stop().then(() => showView('staff')); }
 
     function unlockAdmin() {
         if(document.getElementById('adminKey').value===STORE.PASS) {
             document.getElementById('admin-gate').classList.add('hidden');
             document.getElementById('admin-data').classList.remove('hidden');
             db.ref('logs').on('value', s => {
-                const rawLogs = [];
-                s.forEach(c => rawLogs.push(c.val()));
-                const processed = processLogs(rawLogs);
+                const raw = []; s.forEach(c => raw.push(c.val()));
+                const processed = processLogs(raw);
                 updateUI(processed);
                 window.lastReportData = processed;
             });
-        } else { alert("Hatalı Şifre!"); }
+        }
     }
 
     function processLogs(logs) {
@@ -187,7 +176,7 @@
         });
     }
 
-    function diffMinutes(t1, t2) {
+    function diffMin(t1, t2) {
         if(!t1 || !t2 || t1==="-" || t2==="-") return 0;
         const [h1, m1] = t1.split(":").map(Number);
         const [h2, m2] = t2.split(":").map(Number);
@@ -195,30 +184,23 @@
     }
 
     function exportExcel() {
-        const dataForExcel = window.lastReportData.map(r => {
-            const molaDakika = diffMinutes(r.M_Başla, r.M_Bitir);
-            const toplamDakika = diffMinutes(r.Giriş, r.Çıkış);
-            const netCalisma = Math.max(0, toplamDakika - molaDakika);
-            
+        const excelData = window.lastReportData.map(r => {
+            const mola = diffMin(r.M_Başla, r.M_Bitir);
+            const toplam = diffMin(r.Giriş, r.Çıkış);
+            const net = Math.max(0, toplam - mola);
             return {
-                "Tarih": r.Tarih,
-                "Personel": r.İsim,
-                "Giriş": r.Giriş,
-                "Mola Başla": r.M_Başla,
-                "Mola Bitir": r.M_Bitir,
-                "Mola (Dakika)": molaDakika > 0 ? molaDakika : "0",
-                "Çıkış": r.Çıkış,
-                "Net Çalışma (Saat)": (netCalisma / 60).toFixed(2)
+                "Tarih": r.Tarih, "Personel": r.İsim, "Giriş": r.Giriş, "Mola Başla": r.M_Başla,
+                "Mola Bitir": r.M_Bitir, "Mola (Dak)": mola > 0 ? mola : 0, "Çıkış": r.Çıkış,
+                "Net Mesai (Saat)": (net / 60).toFixed(2)
             };
         });
-
-        const ws = XLSX.utils.json_to_sheet(dataForExcel);
+        const ws = XLSX.utils.json_to_sheet(excelData);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "IklimLife_Takip");
+        XLSX.utils.book_append_sheet(wb, ws, "Rapor");
         XLSX.writeFile(wb, "Iklim_Life_Rapor.xlsx");
     }
 
-    function clearLogs() { if(confirm("Tüm kayıtlar kalıcı olarak silinsin mi?")) db.ref('logs').set(null); }
+    function clearLogs() { if(confirm("Tüm kayıtlar silinsin mi?")) db.ref('logs').set(null); }
     function lockAdmin() { document.getElementById('adminKey').value=""; document.getElementById('admin-gate').classList.remove('hidden'); document.getElementById('admin-data').classList.add('hidden'); }
     function secureLogout() { currentUser=null; document.getElementById('pinCode').value=""; showView('staff'); }
 </script>

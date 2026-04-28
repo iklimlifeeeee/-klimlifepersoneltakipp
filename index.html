@@ -65,9 +65,8 @@
 
         <div id="view-admin" class="hidden">
             <div id="admin-gate">
-                <h2 style="text-align:center;">Yönetici Girişi</h2>
                 <input type="password" id="adminKey" placeholder="Şifre">
-                <button class="btn-main" style="background:var(--primary); color:white;" onclick="unlockAdmin()">Paneli Aç</button>
+                <button class="btn-main" style="background:var(--primary); color:white;" onclick="unlockAdmin()">Giriş</button>
             </div>
             <div id="admin-data" class="hidden">
                 <div style="display:flex; gap:8px; margin-bottom:15px;">
@@ -77,9 +76,7 @@
                 <div style="overflow-x:auto;">
                     <table>
                         <thead>
-                            <tr>
-                                <th>Tarih</th><th>İsim</th><th>Giriş</th><th>M.Başla</th><th>M.Bitir</th><th>Çıkış</th>
-                            </tr>
+                            <tr><th>Tarih</th><th>İsim</th><th>Giriş</th><th>M.Başla</th><th>M.Bitir</th><th>Çıkış</th></tr>
                         </thead>
                         <tbody id="logTableBody"></tbody>
                     </table>
@@ -105,7 +102,7 @@
     const db = firebase.database();
     const scanner = new Html5Qrcode("reader");
     let currentUser = null;
-    const STORE = { CODE: "MAGAZA-12345", PASS: "1674", STAFF: { "0600":"Kübra","6173":"Nefise","7349":"Burcu","9506":"Sultan","4672":"Derya","8672":"Yasemin","1510":"Eda","4209":"Özgün"} };
+    const STAFF = { "0600":"Kübra","6173":"Nefise","7349":"Burcu","9506":"Sultan","4672":"Derya","8672":"Yasemin","1510":"Eda","4209":"Özgün"};
 
     function showView(v) {
         ['view-login','view-panel','view-qr','view-admin'].forEach(i=>document.getElementById(i).classList.add('hidden'));
@@ -117,7 +114,7 @@
 
     function processLogin() {
         const p = document.getElementById('pinCode').value;
-        if(STORE.STAFF[p]) { currentUser=STORE.STAFF[p]; document.getElementById('userName').innerText=`Hoş Geldin, ${currentUser}`; showView('staff'); }
+        if(STAFF[p]) { currentUser=STAFF[p]; document.getElementById('userName').innerText=`Hoş Geldin, ${currentUser}`; showView('staff'); }
         else alert("Hatalı PIN!");
     }
 
@@ -125,7 +122,7 @@
         document.getElementById('view-panel').classList.add('hidden');
         document.getElementById('view-qr').classList.remove('hidden');
         scanner.start({facingMode:"environment"}, {fps:10, qrbox:250}, t=>{
-            if(t===STORE.CODE) {
+            if(t==="MAGAZA-12345") {
                 scanner.stop().then(() => {
                     const d = new Date();
                     db.ref('logs').push({
@@ -134,7 +131,7 @@
                         type: a,
                         time: d.getHours().toString().padStart(2,'0')+":"+d.getMinutes().toString().padStart(2,'0'),
                         ts: Date.now()
-                    }).then(()=>{ alert("Kaydedildi!"); secureLogout(); });
+                    }).then(()=>{ alert("Başarıyla Kaydedildi!"); secureLogout(); });
                 });
             }
         });
@@ -143,14 +140,18 @@
     function cancelAction() { scanner.stop().then(() => showView('staff')); }
 
     function unlockAdmin() {
-        if(document.getElementById('adminKey').value===STORE.PASS) {
+        if(document.getElementById('adminKey').value==="1674") {
             document.getElementById('admin-gate').classList.add('hidden');
             document.getElementById('admin-data').classList.remove('hidden');
             db.ref('logs').on('value', s => {
-                const raw = []; s.forEach(c => raw.push(c.val()));
-                const processed = processLogs(raw);
-                updateUI(processed);
-                window.lastReportData = processed;
+                const logs = []; s.forEach(c => logs.push(c.val()));
+                const report = processLogs(logs);
+                const body = document.getElementById('logTableBody');
+                body.innerHTML = "";
+                report.forEach(r => {
+                    body.innerHTML += `<tr><td>${r.Tarih}</td><td>${r.İsim}</td><td>${r.Giriş}</td><td>${r.M_Başla}</td><td>${r.M_Bitir}</td><td>${r.Çıkış}</td></tr>`;
+                });
+                window.lastReportData = report;
             });
         }
     }
@@ -158,22 +159,14 @@
     function processLogs(logs) {
         const daily = {};
         logs.forEach(l => {
-            const id = `${l.date}_${l.user}`;
-            if(!daily[id]) daily[id] = { Tarih: l.date, İsim: l.user, Giriş: "-", M_Başla: "-", M_Bitir: "-", Çıkış: "-" };
-            if(l.type === "İşe Giriş") daily[id].Giriş = l.time;
-            if(l.type === "Mola Başlat") daily[id].M_Başla = l.time;
-            if(l.type === "Mola Bitir") daily[id].M_Bitir = l.time;
-            if(l.type === "İşten Çıkış") daily[id].Çıkış = l.time;
+            const key = `${l.date}_${l.user}`;
+            if(!daily[key]) daily[key] = { Tarih: l.date, İsim: l.user, Giriş: "-", M_Başla: "-", M_Bitir: "-", Çıkış: "-" };
+            if(l.type === "İşe Giriş") daily[key].Giriş = l.time;
+            if(l.type === "Mola Başlat") daily[key].M_Başla = l.time;
+            if(l.type === "Mola Bitir") daily[key].M_Bitir = l.time;
+            if(l.type === "İşten Çıkış") daily[key].Çıkış = l.time;
         });
         return Object.values(daily).reverse();
-    }
-
-    function updateUI(data) {
-        const body = document.getElementById('logTableBody');
-        body.innerHTML = "";
-        data.forEach(r => {
-            body.innerHTML += `<tr><td>${r.Tarih}</td><td>${r.İsim}</td><td>${r.Giriş}</td><td>${r.M_Başla}</td><td>${r.M_Bitir}</td><td>${r.Çıkış}</td></tr>`;
-        });
     }
 
     function diffMin(t1, t2) {
@@ -190,7 +183,7 @@
             const net = Math.max(0, toplam - mola);
             return {
                 "Tarih": r.Tarih, "Personel": r.İsim, "Giriş": r.Giriş, "Mola Başla": r.M_Başla,
-                "Mola Bitir": r.M_Bitir, "Mola (Dak)": mola > 0 ? mola : 0, "Çıkış": r.Çıkış,
+                "Mola Bitir": r.M_Bitir, "Mola (Dakika)": mola > 0 ? mola : 0, "Çıkış": r.Çıkış,
                 "Net Mesai (Saat)": (net / 60).toFixed(2)
             };
         });
@@ -201,8 +194,9 @@
     }
 
     function clearLogs() { if(confirm("Tüm kayıtlar silinsin mi?")) db.ref('logs').set(null); }
-    function lockAdmin() { document.getElementById('adminKey').value=""; document.getElementById('admin-gate').classList.remove('hidden'); document.getElementById('admin-data').classList.add('hidden'); }
+    function lockAdmin() { document.getElementById('admin-gate').classList.remove('hidden'); document.getElementById('admin-data').classList.add('hidden'); }
     function secureLogout() { currentUser=null; document.getElementById('pinCode').value=""; showView('staff'); }
 </script>
 </body>
 </html>
+

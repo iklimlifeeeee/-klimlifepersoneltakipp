@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>İklim Life | Takip Premium v6.6</title>
+    <title>İklim Life | Takip Premium v6.8</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -113,6 +113,12 @@
                 <button class="btn-act bg-off" onclick="unlockAdmin()">Paneli Aç</button>
             </div>
             <div id="admin-data" class="hidden">
+                <div id="admin-winner-card" class="premium-card" style="background: linear-gradient(135deg, #f59e0b, #d97706); text-align:center; margin-bottom:15px; display:none;">
+                    <small style="color:white">🏆 LİDERLİK TABLOSU</small>
+                    <h3 id="admin-winner-display" style="margin:5px 0; color:white;">-</h3>
+                    <div style="font-size:0.7rem; color:white;">Haftalık puanlamaya göre 1. sırada.</div>
+                </div>
+
                 <div class="stat-box" style="margin-bottom:15px; padding:10px;">
                     <input type="text" id="adminMsg" placeholder="Yeni duyuru yazın..." style="margin-bottom:10px; padding:10px; font-size:0.8rem;">
                     <button class="btn-act bg-work" style="padding:10px; font-size:0.8rem;" onclick="publishAnnouncement()">📢 Duyuruyu Yayınla</button>
@@ -267,11 +273,13 @@
         if(document.getElementById('adminKey').value === STORE.PASS) {
             document.getElementById('admin-gate').classList.add('hidden');
             document.getElementById('admin-data').classList.remove('hidden');
+            // ANLIK DİNLEME AKTİF (on('value'))
             db.ref('logs').on('value', snap => {
                 const logs = []; snap.forEach(c => logs.push(c.val()));
                 const report = processReport(logs);
                 window.fData = report;
                 renderAdmin(report);
+                calculatePerformance(); // Yönetici panelindeki kart için de çalıştır
             });
         }
     }
@@ -301,8 +309,8 @@
             const threshold = (r.Giriş !== "-" && r.Giriş < "12:00") ? "10:30" : "13:00";
             const isLate = r.Giriş !== "-" && r.Giriş > threshold;
             
-            // ANLIK DURUM MANTIĞI GÜNCELLENDİ
             if(isToday && r.Giriş !== "-" && r.Çıkış === "-") {
+                // ANLIK MOLA KONTROLÜ
                 const onBreak = r.M_Bas !== "-" && r.M_Bit === "-";
                 if(onBreak) inBreak++; else inWork++;
                 live.innerHTML += `<div class="status-item"><span class="dot ${onBreak ? 'dot-break' : 'dot-work'}"></span>${r.İsim} ${onBreak ? '(Molada)' : ''}</div>`;
@@ -374,9 +382,18 @@
             });
             let winner = "-"; let max = -1;
             for(let p in scores) { if(scores[p] > max) { max = scores[p]; winner = p; } }
+            
+            // PERSONEL PANELİ GÜNCELLEME
             if(winner !== "-") {
                 document.getElementById('winner-card').classList.remove('hidden');
                 document.getElementById('winner-name').innerText = winner;
+                
+                // YÖNETİCİ PANELİ GÜNCELLEME
+                const adminWinnerCard = document.getElementById('admin-winner-card');
+                if(adminWinnerCard) {
+                    adminWinnerCard.style.display = "block";
+                    document.getElementById('admin-winner-display').innerText = winner;
+                }
             }
         });
     }

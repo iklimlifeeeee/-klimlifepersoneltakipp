@@ -3,28 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>İklim Life | Takip Premium v6.3</title>
+    <title>İklim Life | Takip Premium v6.5</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
-        :root { --primary: #0f172a; --accent: #f59e0b; --success: #10b981; --danger: #ef4444; --info: #3b82f6; --bg-gray: #f1f5f9; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg-gray); margin: 0; display: flex; justify-content: center; color: var(--primary); }
-        .app-container { width: 100%; max-width: 440px; background: white; min-height: 100vh; display: flex; flex-direction: column; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        :root { --primary: #0f172a; --accent: #f59e0b; --success: #10b981; --danger: #ef4444; --info: #3b82f6; --bg-gray: #f1f5f9; --dark-card: #1e293b; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg-gray); margin: 0; display: flex; justify-content: center; color: var(--primary); transition: 0.3s; }
+        .app-container { width: 100%; max-width: 440px; background: white; min-height: 100vh; display: flex; flex-direction: column; box-shadow: 0 10px 25px rgba(0,0,0,0.1); position: relative; }
         
         .nav-header { display: flex; background: var(--primary); padding: 18px; gap: 10px; border-bottom: 3px solid var(--accent); position: sticky; top: 0; z-index: 100; }
-        .nav-btn { flex: 1; padding: 12px; border: none; background: rgba(255,255,255,0.05); color: #94a3b8; border-radius: 10px; font-weight: 700; cursor: pointer; }
-        .nav-btn.active { background: var(--accent); color: var(--primary); }
+        .nav-btn { flex: 1; padding: 12px; border: none; background: rgba(255,255,255,0.05); color: #94a3b8; border-radius: 10px; font-weight: 700; cursor: pointer; transition: 0.3s; }
+        .nav-btn.active { background: var(--accent); color: var(--primary); transform: translateY(-2px); }
 
-        .content { padding: 20px; flex: 1; position: relative; }
+        .content { padding: 20px; flex: 1; position: relative; animation: fadeIn 0.5s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
         .hidden { display: none !important; }
 
-        /* MOLA BARI VE KRONOMETRE */
-        .premium-card { background: linear-gradient(135deg, #1e293b, #0f172a); color: white; padding: 18px; border-radius: 15px; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+        .premium-card { background: linear-gradient(135deg, #1e293b, #0f172a); color: white; padding: 18px; border-radius: 15px; margin-bottom: 15px; position: relative; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
         .mola-timer { font-size: 2.5rem; font-weight: 800; color: var(--accent); text-align: center; margin: 5px 0; font-family: monospace; }
         .progress-bg { width: 100%; background: rgba(255,255,255,0.1); height: 12px; border-radius: 6px; margin: 10px 0; overflow: hidden; }
         .progress-fill { height: 100%; background: var(--success); width: 0%; transition: 0.5s; }
+
+        .announcement-bar { background: #fffbeb; border: 1px solid #fef3c7; padding: 10px; border-radius: 10px; margin-bottom: 15px; font-size: 0.85rem; color: #92400e; display: flex; align-items: center; gap: 8px; }
 
         .stat-container { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
         .stat-box { background: #f8fafc; padding: 15px; border-radius: 15px; text-align: center; border: 1px solid #e2e8f0; }
@@ -33,20 +36,20 @@
         .live-status-list { background: #f1f5f9; padding: 12px; border-radius: 15px; margin-bottom: 20px; font-size: 0.8rem; }
         .status-item { display: inline-flex; align-items: center; background: white; padding: 6px 12px; border-radius: 20px; margin: 4px; border: 1px solid #e2e8f0; font-weight: 600; }
         .dot { width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
-        .dot-work { background: var(--info); }
-        .dot-break { background: var(--success); }
+        .dot-work { background: var(--info); box-shadow: 0 0 8px var(--info); }
+        .dot-break { background: var(--success); box-shadow: 0 0 8px var(--success); }
 
-        input { width: 100%; padding: 16px; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 1rem; margin-bottom: 15px; text-align: center; box-sizing: border-box; }
-        .btn-act { padding: 18px 10px; border-radius: 15px; border: none; color: white; font-weight: 700; display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; width: 100%; }
+        input, select { width: 100%; padding: 16px; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 1rem; margin-bottom: 15px; text-align: center; box-sizing: border-box; outline: none; }
+        .btn-act { padding: 18px 10px; border-radius: 15px; border: none; color: white; font-weight: 700; display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; transition: 0.2s; width: 100%; }
         .bg-work { background: linear-gradient(135deg, #3b82f6, #2563eb); }
         .bg-break { background: linear-gradient(135deg, #10b981, #059669); }
         .bg-off { background: var(--primary); }
         .bg-mola-off { background: linear-gradient(135deg, #f59e0b, #d97706); }
 
-        table { width: 100%; border-collapse: collapse; font-size: 0.75rem; }
-        th { background: #f8fafc; padding: 12px; border-bottom: 2px solid #e2e8f0; }
-        td { padding: 12px 8px; border-bottom: 1px solid #f1f5f9; text-align: center; background: white; }
-        .late { color: var(--danger); font-weight: 800; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.7rem; border-radius: 12px; overflow: hidden; }
+        th { background: #f8fafc; padding: 10px; border-bottom: 2px solid #e2e8f0; font-weight: 800; }
+        td { padding: 10px 5px; border-bottom: 1px solid #f1f5f9; text-align: center; background: white; }
+        .late { color: var(--danger); font-weight: 800; background: #fef2f2; }
         
         #reader { border-radius: 20px; overflow: hidden; border: 4px solid var(--accent); }
         #done { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); z-index: 1000; display: none; background: white; border-radius: 50%; padding: 25px; box-shadow: 0 0 50px rgba(0,0,0,0.3); font-size: 3rem; }
@@ -63,6 +66,10 @@
     </div>
 
     <div class="content">
+        <div id="announcement-view" class="announcement-bar hidden">
+            <span>📢</span> <marquee id="announcement-text" behavior="scroll" direction="left">Hoş geldiniz!</marquee>
+        </div>
+
         <div id="view-login">
             <h2 style="text-align:center">İklim Life</h2>
             <input type="password" id="pinCode" placeholder="PIN" maxlength="4" style="letter-spacing:15px; font-size:2rem;">
@@ -71,15 +78,16 @@
 
         <div id="view-panel" class="hidden">
             <div id="mola-active-card" class="premium-card hidden" style="border: 2px solid var(--success);">
-                <small>☕ MOLA DURUMU</small>
+                <small>☕ CANLI MOLA TAKİBİ</small>
                 <div class="mola-timer" id="live-timer">00:00</div>
                 <div class="progress-bg"><div id="p-bar" class="progress-fill"></div></div>
-                <div style="text-align:center; font-size:0.75rem;">Kalan: <span id="mola-left">45 dk</span></div>
+                <div style="text-align:center; font-size:0.75rem; font-weight:700;">Kalan: <span id="mola-left">45 dk</span></div>
             </div>
 
             <div class="premium-card">
-                <small>Bugünkü Vardiyanız</small>
+                <small id="shiftLabel">Bugünkü Vardiyanız</small>
                 <h4 id="userShift">Yükleniyor...</h4>
+                <div id="shiftStatus" style="font-size:0.75rem;">Sabah: 10:30 | Öğle: 13:00</div>
             </div>
             
             <h3 id="userName" style="text-align:center; margin-bottom:20px;"></h3>
@@ -103,8 +111,13 @@
                     <div class="stat-box"><b id="count-work">0</b><span>İçeride</span></div>
                     <div class="stat-box"><b id="count-break">0</b><span>Molada</span></div>
                 </div>
-                <div id="live-status" class="live-status-list">Anlık: </div>
-                <button class="btn-act bg-break" style="padding:15px; margin-bottom:15px;" onclick="exportExcel()">📊 Excel Raporu Al</button>
+                <div id="live-status" class="live-status-list">Anlık Durum: </div>
+                
+                <div style="display:flex; gap:10px; margin-bottom: 15px;">
+                    <button class="btn-act bg-break" style="padding:12px;" onclick="exportExcel()">📊 Excel Raporu</button>
+                    <button class="btn-act bg-off" style="padding:12px;" onclick="clearLogs()">🧹 Sıfırla</button>
+                </div>
+
                 <div style="overflow-x:auto;">
                     <table>
                         <thead><tr><th>Tarih</th><th>İsim</th><th>Giriş</th><th>Mola B.</th><th>Mola S.</th><th>Çıkış</th></tr></thead>
@@ -145,15 +158,21 @@
     let currentUser = null;
     let timerInterval = null;
 
+    function checkLocation(callback) {
+        if (!navigator.geolocation) { alert("Konum gerekli."); return; }
+        navigator.geolocation.getCurrentPosition(() => { callback(); }, () => { alert("Konum izni verin!"); });
+    }
+
     function showView(v) {
         ['view-login','view-panel','view-qr','view-admin'].forEach(id => document.getElementById(id).classList.add('hidden'));
         if(v==='staff') {
             if(currentUser) { 
                 document.getElementById('view-panel').classList.remove('hidden');
+                document.getElementById('announcement-view').classList.remove('hidden');
                 loadUserShift();
                 checkActiveMola();
-            } else document.getElementById('view-login').classList.remove('hidden');
-        } else document.getElementById('view-admin').classList.remove('hidden');
+            } else { document.getElementById('view-login').classList.remove('hidden'); }
+        } else { document.getElementById('view-admin').classList.remove('hidden'); }
         document.getElementById('t-staff').classList.toggle('active', v==='staff');
         document.getElementById('t-admin').classList.toggle('active', v==='admin');
     }
@@ -164,7 +183,8 @@
             currentUser = STORE.STAFF[pin]; 
             document.getElementById('userName').innerText = `Hoş Geldin, ${currentUser}`; 
             showView('staff');
-        } else alert("Hatalı PIN!");
+            listenAnnouncements();
+        } else alert("PIN Hatalı!");
     }
 
     function checkActiveMola() {
@@ -197,24 +217,27 @@
             const progress = (mins / 45) * 100;
             document.getElementById('p-bar').style.width = Math.min(progress, 100) + "%";
             document.getElementById('p-bar').style.background = progress > 100 ? "var(--danger)" : "var(--success)";
-            document.getElementById('mola-left').innerText = (45 - mins) > 0 ? (45 - mins) + " dk" : "Süre Doldu!";
+            const left = 45 - mins;
+            document.getElementById('mola-left').innerText = left > 0 ? left + " dk kaldı" : "Süre Doldu!";
         }, 1000);
     }
 
     function triggerQR(type) {
-        document.getElementById('view-panel').classList.add('hidden');
-        document.getElementById('view-qr').classList.remove('hidden');
-        scanner.start({facingMode:"environment"}, {fps:15, qrbox:250}, res => {
-            if(res === STORE.CODE) {
-                scanner.stop().then(() => {
-                    const d = new Date();
-                    const time = d.getHours().toString().padStart(2,'0') + ":" + d.getMinutes().toString().padStart(2,'0');
-                    db.ref('logs').push({ date: d.toLocaleDateString('tr-TR'), user: currentUser, type: type, time: time, ts: Date.now() }).then(() => {
-                        document.getElementById('done').style.display='block';
-                        setTimeout(() => { document.getElementById('done').style.display='none'; checkActiveMola(); showView('staff'); }, 1200);
+        checkLocation(() => {
+            document.getElementById('view-panel').classList.add('hidden');
+            document.getElementById('view-qr').classList.remove('hidden');
+            scanner.start({facingMode:"environment"}, {fps:15, qrbox:250}, res => {
+                if(res === STORE.CODE) {
+                    scanner.stop().then(() => {
+                        const d = new Date();
+                        const time = d.getHours().toString().padStart(2,'0') + ":" + d.getMinutes().toString().padStart(2,'0');
+                        db.ref('logs').push({ date: d.toLocaleDateString('tr-TR'), user: currentUser, type: type, time: time, ts: Date.now() }).then(() => {
+                            document.getElementById('done').style.display='block';
+                            setTimeout(() => { document.getElementById('done').style.display='none'; checkActiveMola(); showView('staff'); }, 1200);
+                        });
                     });
-                });
-            }
+                }
+            });
         });
     }
 
@@ -225,13 +248,12 @@
             db.ref('logs').on('value', snap => {
                 const logs = []; snap.forEach(c => logs.push(c.val()));
                 const report = processReport(logs);
-                window.fData = report; // Excel için sakla
+                window.fData = report;
                 renderAdmin(report);
             });
         }
     }
 
-    // EXCEL VE TABLO İÇİN VERİLERİ BİRLEŞTİREN ANA FONKSİYON
     function processReport(logs) {
         const daily = {};
         logs.forEach(l => {
@@ -242,32 +264,33 @@
             if(l.type === 'Mola Bitir') daily[id].M_Bit = l.time;
             if(l.type === 'İşten Çıkış') daily[id].Çıkış = l.time;
         });
-        return Object.values(daily).sort((a,b) => b.Tarih.localeCompare(a.Tarih));
+        return Object.values(daily).reverse();
     }
 
     function renderAdmin(data) {
         const body = document.getElementById('logTableBody');
         const live = document.getElementById('live-status');
         const today = new Date().toLocaleDateString('tr-TR');
-        body.innerHTML = ""; live.innerHTML = "<b>Anlık:</b> ";
+        body.innerHTML = ""; live.innerHTML = "<b>Anlık Durum:</b><br>";
         let inWork = 0, inBreak = 0;
 
         data.forEach(r => {
-            if(r.Tarih === today && r.Giriş !== "-" && r.Çıkış === "-") {
+            const isToday = r.Tarih === today;
+            const threshold = (r.Giriş !== "-" && r.Giriş < "12:00") ? "10:30" : "13:00";
+            const isLate = r.Giriş !== "-" && r.Giriş > threshold;
+            if(isToday && r.Giriş !== "-" && r.Çıkış === "-") {
                 const onBreak = r.M_Bas !== "-" && r.M_Bit === "-";
                 if(onBreak) inBreak++; else inWork++;
-                live.innerHTML += `<span class="status-item"><span class="dot ${onBreak ? 'dot-break' : 'dot-work'}"></span>${r.İsim}</span>`;
+                live.innerHTML += `<div class="status-item"><span class="dot ${onBreak ? 'dot-break' : 'dot-work'}"></span>${r.İsim}</div>`;
             }
-            body.innerHTML += `<tr><td>${r.Tarih}</td><td>${r.İsim}</td><td>${r.Giriş}</td><td>${r.M_Bas}</td><td>${r.M_Bit}</td><td>${r.Çıkış}</td></tr>`;
+            body.innerHTML += `<tr><td>${r.Tarih}</td><td>${r.İsim}</td><td class="${isLate ? 'late' : ''}">${r.Giriş}</td><td>${r.M_Bas}</td><td>${r.M_Bit}</td><td>${r.Çıkış}</td></tr>`;
         });
         document.getElementById('count-work').innerText = inWork;
         document.getElementById('count-break').innerText = inBreak;
     }
 
     function exportExcel() {
-        if(!window.fData) return;
         const excelData = window.fData.map(r => {
-            // Mola süresi hesapla
             let molaDakika = 0;
             if(r.M_Bas !== "-" && r.M_Bit !== "-") {
                 const [h1, m1] = r.M_Bas.split(":").map(Number);
@@ -276,29 +299,33 @@
             }
             return {
                 "Tarih": r.Tarih,
-                "Personel Adı": r.İsim,
-                "İşe Giriş Saati": r.Giriş,
+                "İsim": r.İsim,
+                "Giriş Saati": r.Giriş,
                 "Mola Başlangıç": r.M_Bas,
                 "Mola Bitiş": r.M_Bit,
-                "Toplam Mola (Dk)": molaDakika > 0 ? molaDakika : (r.M_Bas !== "-" ? "Mola Sürüyor" : "0"),
-                "Mesai Bitiş Saati": r.Çıkış
+                "Mola Süresi (Dk)": molaDakika > 0 ? molaDakika : (r.M_Bas !== "-" ? "Sürüyor" : "0"),
+                "Çıkış Saati": r.Çıkış
             };
         });
         const ws = XLSX.utils.json_to_sheet(excelData);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Personel Takip");
-        XLSX.writeFile(wb, `Iklim_Life_Rapor_${new Date().toLocaleDateString('tr-TR')}.xlsx`);
+        XLSX.utils.book_append_sheet(wb, ws, "IklimLife_Rapor");
+        XLSX.writeFile(wb, "IklimLife_Detayli_Rapor.xlsx");
     }
 
     function loadUserShift() {
         db.ref('logs').orderByChild('user').equalTo(currentUser).limitToLast(5).once('value', snap => {
-            let lastIn = "10:30"; snap.forEach(l => { if(l.val().type === 'İşe Giriş') lastIn = l.val().time; });
+            let lastIn = "10:30";
+            snap.forEach(l => { if(l.val().type === 'İşe Giriş') lastIn = l.val().time; });
             document.getElementById('userShift').innerText = lastIn < "12:00" ? "10:30" : "13:00";
         });
     }
 
-    function secureLogout() { currentUser=null; clearInterval(timerInterval); showView('staff'); }
+    function listenAnnouncements() { db.ref('announcement').on('value', snap => { if(snap.exists()) document.getElementById('announcement-text').innerText = snap.val().text; }); }
+    function secureLogout() { currentUser=null; clearInterval(timerInterval); document.getElementById('pinCode').value=""; showView('staff'); }
     function cancelAction() { scanner.stop().then(() => showView('staff')); }
+    function clearLogs() { if(confirm("Silinsin mi?")) db.ref('logs').set(null); }
+    function calculatePerformance() {} function saveShift() {} function loadShiftSetting() {} function publishAnnouncement() {}
 </script>
 </body>
 </html>

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>İklim Life | Takip Premium v6.5</title>
+    <title>İklim Life | Takip Premium v6.6</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -182,7 +182,7 @@
                 document.getElementById('announcement-view').classList.remove('hidden');
                 loadUserShift();
                 checkActiveMola();
-                calculatePerformance(); // Haftanın personelini hesapla
+                calculatePerformance(); 
             } else { document.getElementById('view-login').classList.remove('hidden'); }
         } else { document.getElementById('view-admin').classList.remove('hidden'); }
         document.getElementById('t-staff').classList.toggle('active', v==='staff');
@@ -300,10 +300,12 @@
             const isToday = r.Tarih === today;
             const threshold = (r.Giriş !== "-" && r.Giriş < "12:00") ? "10:30" : "13:00";
             const isLate = r.Giriş !== "-" && r.Giriş > threshold;
+            
+            // ANLIK DURUM MANTIĞI GÜNCELLENDİ
             if(isToday && r.Giriş !== "-" && r.Çıkış === "-") {
                 const onBreak = r.M_Bas !== "-" && r.M_Bit === "-";
                 if(onBreak) inBreak++; else inWork++;
-                live.innerHTML += `<div class="status-item"><span class="dot ${onBreak ? 'dot-break' : 'dot-work'}"></span>${r.İsim}</div>`;
+                live.innerHTML += `<div class="status-item"><span class="dot ${onBreak ? 'dot-break' : 'dot-work'}"></span>${r.İsim} ${onBreak ? '(Molada)' : ''}</div>`;
             }
             body.innerHTML += `<tr><td>${r.Tarih}</td><td>${r.İsim}</td><td class="${isLate ? 'late' : ''}">${r.Giriş}</td><td>${r.M_Bas}</td><td>${r.M_Bit}</td><td>${r.Çıkış}</td></tr>`;
         });
@@ -340,8 +342,6 @@
         });
     }
 
-    // --- BOŞLUKLARI DOLDURAN YENİ FONKSİYONLAR ---
-
     function publishAnnouncement() {
         const msg = document.getElementById('adminMsg').value;
         if(msg) {
@@ -369,7 +369,7 @@
                 if(log.type === 'İşe Giriş') {
                     if(!scores[log.user]) scores[log.user] = 0;
                     const threshold = log.time < "12:00" ? "10:35" : "13:05";
-                    if(log.time <= threshold) scores[log.user] += 10; // Zamanında gelene 10 puan
+                    if(log.time <= threshold) scores[log.user] += 10;
                 }
             });
             let winner = "-"; let max = -1;

@@ -96,7 +96,7 @@
                 <div class="premium-card" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: var(--primary);">
                     <small>🏆 Haftanın Personeli</small>
                     <h4 id="bestStaff">-</h4>
-                    <div id="performanceScore" style="font-size: 0.7rem; font-weight: 700;">Hatasızlık ve 45dk mola kuralına göre...</div>
+                    <div style="font-size: 0.7rem; font-weight: 700;">Hatasızlık ve 45dk mola kuralına göre...</div>
                 </div>
 
                 <div class="stat-container">
@@ -159,14 +159,6 @@
 
     let currentUser = null;
 
-    if ("Notification" in window) { Notification.requestPermission(); }
-
-    function sendNotify(title, body) {
-        if (Notification.permission === "granted") {
-            new Notification(title, { body: body, icon: 'https://cdn-icons-png.flaticon.com/512/1157/1157000.png' });
-        }
-    }
-
     function showView(v) {
         ['view-login','view-panel','view-qr','view-admin'].forEach(id => document.getElementById(id).classList.add('hidden'));
         if(v==='staff') {
@@ -200,44 +192,45 @@
                 scanner.stop().then(() => {
                     const d = new Date();
                     const time = d.getHours().toString().padStart(2,'0') + ":" + d.getMinutes().toString().padStart(2,'0');
-                    if(type === 'İşe Giriş') sendNotify("İklim Life", `${currentUser} işe başladı.`);
-                    db.ref('logs').push({ date: d.toLocaleDateString('tr-TR'), user: currentUser, type: type, time: time, ts: Date.now() })
-                    .then(() => {
+                    // VERİYİ GÖNDER
+                    db.ref('logs').push({ 
+                        date: d.toLocaleDateString('tr-TR'), 
+                        user: currentUser, 
+                        type: type, 
+                        time: time, 
+                        ts: Date.now() 
+                    }).then(() => {
                         document.getElementById('done').style.display='block';
-                        setTimeout(() => { document.getElementById('done').style.display='none'; secureLogout(); }, 1200);
+                        setTimeout(() => { 
+                            document.getElementById('done').style.display='none'; 
+                            secureLogout(); 
+                        }, 1200);
                     });
                 });
             }
         });
     }
 
-    function saveShift() {
-        const user = document.getElementById('shiftTarget').value;
-        const time = document.getElementById('shiftTime').value;
-        if(!user) return alert("Personel seçin!");
-        db.ref('shifts/' + user).set(time).then(() => alert("Vardiya kaydedildi!"));
-    }
-
-    function loadUserShift() {
-        db.ref('shifts/' + currentUser).once('value', snap => {
-            const shift = snap.val() || "Belirlenmedi";
-            document.getElementById('userShift').innerText = shift;
-        });
-    }
-
+    // YÖNETİCİ PANELİ ANA FONKSİYONLAR
     function unlockAdmin() {
         if(document.getElementById('adminKey').value === STORE.PASS) {
             document.getElementById('admin-gate').classList.add('hidden');
             document.getElementById('admin-data').classList.remove('hidden');
+            
+            // Personel listesini doldur
             const select = document.getElementById('shiftTarget');
             select.innerHTML = '<option value="">Personel Seçin</option>';
             Object.values(STORE.STAFF).forEach(name => {
                 select.innerHTML += `<option value="${name}">${name}</option>`;
             });
+
+            // CANLI DİNLEME (On Value) - Burası veritabanı değiştikçe tabloyu günceller
             db.ref('logs').on('value', snap => {
-                const logs = []; snap.forEach(c => logs.push(c.val()));
+                const logs = []; 
+                snap.forEach(c => { logs.push(c.val()); });
                 const report = processReport(logs);
                 window.fData = report;
+                
                 db.ref('shifts').once('value', sSnap => {
                     renderAdmin(report, sSnap.val() || {});
                     calculatePerformance(report, sSnap.val() || {});
@@ -263,12 +256,14 @@
         const body = document.getElementById('logTableBody');
         const live = document.getElementById('live-status');
         const today = new Date().toLocaleDateString('tr-TR');
-        body.innerHTML = ""; live.innerHTML = "<b>Anlık Durum:</b><br>";
+        body.innerHTML = "";
+        live.innerHTML = "<b>Anlık Durum:</b><br>";
+        
         let inWork = 0, inBreak = 0;
 
         data.forEach(r => {
             const isToday = r.Tarih === today;
-            // Yeni Dinamik Kural: 12:00'den önceyse sabahçı (09:30), sonraysa öğleci (13:00)
+            // 09:30 ve 13:00 KURALI
             const assignedShift = shifts[r.İsim] || "09:30";
             const threshold = (assignedShift < "12:00") ? "09:30" : "13:00";
             const isLate = r.Giriş !== "-" && r.Giriş > threshold;
@@ -294,13 +289,34 @@
             if(r.M_Bas !== "-" && r.M_Bit !== "-") {
                 const [h1, m1] = r.M_Bas.split(":").map(Number);
                 const [h2, m2] = r.M_Bit.split(":").map(Number);
-                // Yeni Mola Kuralı: 45 Dakika
+                // 45 DAKİKA MOLA KURALI
                 if(((h2*60)+m2) - ((h1*60)+m1) > 45) scores[r.İsim] -= 5;
             }
         });
         let best = { name: "-", score: -1000 };
         for (let name in scores) { if(scores[name] > best.score) best = { name: name, score: scores[name] }; }
         document.getElementById('bestStaff').innerText = best.name;
+    }
+
+    function saveShift() {
+        const user = document.getElementById('shiftTarget').value;
+        const time = document.getElementById('shiftTime').value;
+        if(!user) return alert("Personel seçin!");
+        db.ref('shifts/' + user).set(time).then(() => alert("Vardiya kaydedildi!"));
+    }
+
+    function loadUserShift() {
+        db.ref('shifts/' + currentUser).once('value', snap => {
+            document.getElementById('userShift').innerText = snap.val() || "Belirlenmedi";
+        });
+    }
+
+    function loadShiftSetting() {
+        const user = document.getElementById('shiftTarget').value;
+        if(!user) return;
+        db.ref('shifts/' + user).once('value', s => {
+            if(s.exists()) document.getElementById('shiftTime').value = s.val();
+        });
     }
 
     function exportExcel() {
@@ -313,13 +329,6 @@
     function clearLogs() { if(confirm("Tüm kayıtlar silinsin mi?")) db.ref('logs').set(null); }
     function secureLogout() { currentUser=null; document.getElementById('pinCode').value=""; showView('staff'); }
     function cancelAction() { scanner.stop().then(() => showView('staff')); }
-    function loadShiftSetting() {
-        const user = document.getElementById('shiftTarget').value;
-        if(!user) return;
-        db.ref('shifts/' + user).once('value', s => {
-            if(s.exists()) document.getElementById('shiftTime').value = s.val();
-        });
-    }
 </script>
 </body>
 </html>

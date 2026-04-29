@@ -73,7 +73,7 @@
             <div class="premium-card">
                 <small>Bugünkü Vardiyanız</small>
                 <h4 id="userShift">Yükleniyor...</h4>
-                <div id="shiftStatus" style="font-size:0.75rem;">Sabah: 10:30 | Öğle: 13:00</div>
+                <div id="shiftStatus" style="font-size:0.75rem;">Sabah: 09:30 | Öğle: 13:00</div>
             </div>
             
             <h3 id="userName" style="text-align:center;"></h3>
@@ -247,8 +247,8 @@
 
         data.forEach(r => {
             const isToday = r.Tarih === today;
-            // OTOMATİK VARDİYA MANTIĞI: 12:00 altı 10:30, üstü 13:00
-            const threshold = (r.Giriş !== "-" && r.Giriş < "12:00") ? "10:30" : "13:00";
+            // OTOMATİK VARDİYA MANTIĞI: 12:00 altı 09:30, üstü 13:00
+            const threshold = (r.Giriş !== "-" && r.Giriş < "12:00") ? "09:30" : "13:00";
             const isLate = r.Giriş !== "-" && r.Giriş > threshold;
             
             if(isToday && r.Giriş !== "-" && r.Çıkış === "-") {
@@ -266,7 +266,7 @@
         const scores = {};
         data.forEach(r => {
             if(!scores[r.İsim]) scores[r.İsim] = 100;
-            const threshold = (r.Giriş !== "-" && r.Giriş < "12:00") ? "10:30" : "13:00";
+            const threshold = (r.Giriş !== "-" && r.Giriş < "12:00") ? "09:30" : "13:00";
             if(r.Giriş !== "-" && r.Giriş > threshold) scores[r.İsim] -= 10;
             if(r.M_Bas !== "-" && r.M_Bit !== "-") {
                 const [h1, m1] = r.M_Bas.split(":").map(Number);
@@ -280,7 +280,6 @@
     }
 
     function loadUserShift() {
-        // Personel ekranında otomatik vardiya tahmini gösterimi
         db.ref('logs').orderByChild('user').equalTo(currentUser).limitToLast(5).once('value', snap => {
             let lastIn = "09:30";
             snap.forEach(l => { if(l.val().type === 'İşe Giriş') lastIn = l.val().time; });
@@ -290,7 +289,6 @@
     }
 
     function exportExcel() {
-        // Excel için mola süresi hesaplayarak yeni data oluştur
         const excelData = window.fData.map(r => {
             let molaSuresi = 0;
             if(r.M_Bas !== "-" && r.M_Bit !== "-") {
@@ -315,7 +313,6 @@
         XLSX.writeFile(wb, "IklimLife_Mola_Raporu.xlsx");
     }
 
-    // Fonksiyon iskeletleri korunmuştur
     function saveShift() {} 
     function loadShiftSetting() {}
     function clearLogs() { if(confirm("Tüm kayıtlar silinsin mi?")) db.ref('logs').set(null); }

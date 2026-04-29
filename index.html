@@ -73,7 +73,7 @@
             <div class="premium-card">
                 <small>Bugünkü Vardiyanız</small>
                 <h4 id="userShift">Yükleniyor...</h4>
-                <div id="shiftStatus" style="font-size:0.75rem;">Sabah: 09:30 | Öğle: 13:00</div>
+                <div id="shiftStatus" style="font-size:0.75rem;">Sabah: 10:30 | Öğle: 13:00</div>
             </div>
             
             <h3 id="userName" style="text-align:center;"></h3>
@@ -106,18 +106,14 @@
 
                 <div id="live-status" class="live-status-list">Anlık Durum: </div>
                 
-                <h4 style="margin-top:20px;">Vardiya Ayarları</h4>
-                <select id="shiftTarget" onchange="loadShiftSetting()">
+                <h4 style="margin-top:20px;">Personel Durumu</h4>
+                <select id="shiftTarget" onchange="loadShiftSetting()" style="display:none;">
                     <option value="">Personel Seçin</option>
                 </select>
-                <div style="display:flex; gap:5px;">
-                    <input type="time" id="shiftTime" value="09:30">
-                    <button class="btn-act bg-work" style="padding:10px; flex:1;" onclick="saveShift()">Vardiya Ata</button>
-                </div>
 
                 <div style="display:flex; gap:10px; margin:20px 0;">
-                    <button class="btn-act bg-break" style="padding:12px;" onclick="exportExcel()">Excel</button>
-                    <button class="btn-act bg-off" style="padding:12px;" onclick="clearLogs()">Sıfırla</button>
+                    <button class="btn-act bg-break" style="padding:12px;" onclick="exportExcel()">Excel Raporu Al</button>
+                    <button class="btn-act bg-off" style="padding:12px;" onclick="clearLogs()">Tüm Verileri Sıfırla</button>
                 </div>
 
                 <div style="overflow-x:auto;">
@@ -154,7 +150,7 @@
     const STORE = {
         CODE: "MAGAZA-12345",
         PASS: "1674",
-        STAFF: { "0600":"Kübra","6173":"Nefise","7349":"Burcu","9506":"Sultan","4672":"Derya","8672":"Yasemin","1510":"Eda","4209":"Özgün","1234":"Merve"}
+        STAFF: { "0600":"Kübra","6173":"Nefise","7349":"Burcu","9506":"Sultan","4672":"Derya","8672":"Yasemin","1510":"Eda","4209":"Özgün"}
     };
 
     let currentUser = null;
@@ -192,7 +188,6 @@
                 scanner.stop().then(() => {
                     const d = new Date();
                     const time = d.getHours().toString().padStart(2,'0') + ":" + d.getMinutes().toString().padStart(2,'0');
-                    // VERİYİ GÖNDER
                     db.ref('logs').push({ 
                         date: d.toLocaleDateString('tr-TR'), 
                         user: currentUser, 
@@ -211,30 +206,19 @@
         });
     }
 
-    // YÖNETİCİ PANELİ ANA FONKSİYONLAR
     function unlockAdmin() {
         if(document.getElementById('adminKey').value === STORE.PASS) {
             document.getElementById('admin-gate').classList.add('hidden');
             document.getElementById('admin-data').classList.remove('hidden');
             
-            // Personel listesini doldur
-            const select = document.getElementById('shiftTarget');
-            select.innerHTML = '<option value="">Personel Seçin</option>';
-            Object.values(STORE.STAFF).forEach(name => {
-                select.innerHTML += `<option value="${name}">${name}</option>`;
-            });
-
-            // CANLI DİNLEME (On Value) - Burası veritabanı değiştikçe tabloyu günceller
             db.ref('logs').on('value', snap => {
                 const logs = []; 
                 snap.forEach(c => { logs.push(c.val()); });
                 const report = processReport(logs);
                 window.fData = report;
                 
-                db.ref('shifts').once('value', sSnap => {
-                    renderAdmin(report, sSnap.val() || {});
-                    calculatePerformance(report, sSnap.val() || {});
-                });
+                renderAdmin(report);
+                calculatePerformance(report);
             });
         }
     }
@@ -252,7 +236,7 @@
         return Object.values(daily).reverse();
     }
 
-    function renderAdmin(data, shifts) {
+    function renderAdmin(data) {
         const body = document.getElementById('logTableBody');
         const live = document.getElementById('live-status');
         const today = new Date().toLocaleDateString('tr-TR');
@@ -263,9 +247,8 @@
 
         data.forEach(r => {
             const isToday = r.Tarih === today;
-            // 09:30 ve 13:00 KURALI
-            const assignedShift = shifts[r.İsim] || "09:30";
-            const threshold = (assignedShift < "12:00") ? "09:30" : "13:00";
+            // OTOMATİK VARDİYA MANTIĞI: 12:00 altı 10:30, üstü 13:00
+            const threshold = (r.Giriş !== "-" && r.Giriş < "12:00") ? "10:30" : "13:00";
             const isLate = r.Giriş !== "-" && r.Giriş > threshold;
             
             if(isToday && r.Giriş !== "-" && r.Çıkış === "-") {
@@ -279,17 +262,15 @@
         document.getElementById('count-break').innerText = inBreak;
     }
 
-    function calculatePerformance(data, shifts) {
+    function calculatePerformance(data) {
         const scores = {};
         data.forEach(r => {
             if(!scores[r.İsim]) scores[r.İsim] = 100;
-            const assignedShift = shifts[r.İsim] || "09:30";
-            const threshold = (assignedShift < "12:00") ? "09:30" : "13:00";
+            const threshold = (r.Giriş !== "-" && r.Giriş < "12:00") ? "10:30" : "13:00";
             if(r.Giriş !== "-" && r.Giriş > threshold) scores[r.İsim] -= 10;
             if(r.M_Bas !== "-" && r.M_Bit !== "-") {
                 const [h1, m1] = r.M_Bas.split(":").map(Number);
                 const [h2, m2] = r.M_Bit.split(":").map(Number);
-                // 45 DAKİKA MOLA KURALI
                 if(((h2*60)+m2) - ((h1*60)+m1) > 45) scores[r.İsim] -= 5;
             }
         });
@@ -298,34 +279,45 @@
         document.getElementById('bestStaff').innerText = best.name;
     }
 
-    function saveShift() {
-        const user = document.getElementById('shiftTarget').value;
-        const time = document.getElementById('shiftTime').value;
-        if(!user) return alert("Personel seçin!");
-        db.ref('shifts/' + user).set(time).then(() => alert("Vardiya kaydedildi!"));
-    }
-
     function loadUserShift() {
-        db.ref('shifts/' + currentUser).once('value', snap => {
-            document.getElementById('userShift').innerText = snap.val() || "Belirlenmedi";
-        });
-    }
-
-    function loadShiftSetting() {
-        const user = document.getElementById('shiftTarget').value;
-        if(!user) return;
-        db.ref('shifts/' + user).once('value', s => {
-            if(s.exists()) document.getElementById('shiftTime').value = s.val();
+        // Personel ekranında otomatik vardiya tahmini gösterimi
+        db.ref('logs').orderByChild('user').equalTo(currentUser).limitToLast(5).once('value', snap => {
+            let lastIn = "10:30";
+            snap.forEach(l => { if(l.val().type === 'İşe Giriş') lastIn = l.val().time; });
+            const pref = lastIn < "12:00" ? "10:30" : "13:00";
+            document.getElementById('userShift').innerText = pref;
         });
     }
 
     function exportExcel() {
-        const ws = XLSX.utils.json_to_sheet(window.fData);
+        // Excel için mola süresi hesaplayarak yeni data oluştur
+        const excelData = window.fData.map(r => {
+            let molaSuresi = 0;
+            if(r.M_Bas !== "-" && r.M_Bit !== "-") {
+                const [h1, m1] = r.M_Bas.split(":").map(Number);
+                const [h2, m2] = r.M_Bit.split(":").map(Number);
+                molaSuresi = ((h2 * 60) + m2) - ((h1 * 60) + m1);
+            }
+            return {
+                "Tarih": r.Tarih,
+                "İsim": r.İsim,
+                "İşe Giriş": r.Giriş,
+                "Mola Başlangıç": r.M_Bas,
+                "Mola Bitiş": r.M_Bit,
+                "Toplam Mola (Dk)": molaSuresi > 0 ? molaSuresi : "0",
+                "İşten Çıkış": r.Çıkış
+            };
+        });
+
+        const ws = XLSX.utils.json_to_sheet(excelData);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Rapor");
-        XLSX.writeFile(wb, "IklimLife_Takip.xlsx");
+        XLSX.utils.book_append_sheet(wb, ws, "Personel Raporu");
+        XLSX.writeFile(wb, "IklimLife_Mola_Raporu.xlsx");
     }
 
+    // Fonksiyon iskeletleri korunmuştur
+    function saveShift() {} 
+    function loadShiftSetting() {}
     function clearLogs() { if(confirm("Tüm kayıtlar silinsin mi?")) db.ref('logs').set(null); }
     function secureLogout() { currentUser=null; document.getElementById('pinCode').value=""; showView('staff'); }
     function cancelAction() { scanner.stop().then(() => showView('staff')); }

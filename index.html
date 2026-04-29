@@ -3,76 +3,60 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>İklim Life | Premium Takip</title>
+    <title>İklim Life | Takip Premium v5.1</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
-        /* Modern ve Karanlık Mod Uyumlu Renk Paleti */
-        :root { 
-            --primary: #0f172a; --accent: #f59e0b; --success: #10b981; --danger: #ef4444; 
-            --info: #3b82f6; --bg-gray: #f1f5f9; --card-bg: #ffffff; --text: #1e293b;
-        }
+        :root { --primary: #0f172a; --accent: #f59e0b; --success: #10b981; --danger: #ef4444; --info: #3b82f6; --bg-gray: #f1f5f9; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg-gray); margin: 0; display: flex; justify-content: center; color: var(--primary); }
+        .app-container { width: 100%; max-width: 440px; background: white; min-height: 100vh; display: flex; flex-direction: column; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
         
-        /* Genel Tasarım */
-        body { font-family: 'Inter', 'Segoe UI', sans-serif; background: var(--bg-gray); margin: 0; display: flex; justify-content: center; color: var(--text); transition: 0.3s; }
-        .app-container { width: 100%; max-width: 440px; background: var(--card-bg); min-height: 100vh; display: flex; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.1); position: relative; overflow: hidden; }
-        
-        /* Header */
-        .nav-header { display: flex; background: var(--primary); padding: 20px 15px; gap: 10px; border-bottom: 3px solid var(--accent); }
-        .nav-btn { flex: 1; padding: 12px; border: none; background: rgba(255,255,255,0.05); color: #94a3b8; border-radius: 12px; font-weight: 700; cursor: pointer; transition: 0.3s; }
+        .nav-header { display: flex; background: var(--primary); padding: 18px; gap: 10px; border-bottom: 3px solid var(--accent); }
+        .nav-btn { flex: 1; padding: 12px; border: none; background: rgba(255,255,255,0.05); color: #94a3b8; border-radius: 10px; font-weight: 700; cursor: pointer; }
         .nav-btn.active { background: var(--accent); color: var(--primary); }
 
-        .content { padding: 25px; flex: 1; z-index: 1; }
+        .content { padding: 20px; flex: 1; position: relative; }
         .hidden { display: none !important; }
 
-        /* Grafiksel Özet Kartları */
-        .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
-        .stat-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 15px; text-align: center; }
-        .stat-val { display: block; font-size: 1.5rem; font-weight: 800; color: var(--accent); }
-        .stat-label { font-size: 0.7rem; color: #64748b; text-transform: uppercase; letter-spacing: 1px; }
+        .stat-container { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+        .stat-box { background: #f8fafc; padding: 15px; border-radius: 15px; text-align: center; border: 1px solid #e2e8f0; }
+        .stat-box b { display: block; font-size: 1.4rem; color: var(--accent); }
+        .stat-box span { font-size: 0.7rem; color: #64748b; text-transform: uppercase; font-weight: 700; }
 
-        /* Status Badges (Canlı Durum) */
-        .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 5px; }
-        .badge-work { background: var(--info); box-shadow: 0 0 8px var(--info); }
-        .badge-break { background: var(--success); box-shadow: 0 0 8px var(--success); }
+        .premium-card { background: linear-gradient(135deg, #1e293b, #0f172a); color: white; padding: 15px; border-radius: 15px; margin-bottom: 15px; position: relative; overflow: hidden; }
+        .premium-card small { font-size: 0.7rem; opacity: 0.8; text-transform: uppercase; }
+        .premium-card h4 { margin: 5px 0; color: var(--accent); }
 
-        /* Butonlar */
-        .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-        .btn-act { padding: 25px 10px; border-radius: 20px; border: none; color: white; font-weight: 700; display: flex; flex-direction: column; align-items: center; gap: 12px; cursor: pointer; transition: 0.3s; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .live-status-list { background: #f1f5f9; padding: 12px; border-radius: 15px; margin-bottom: 20px; font-size: 0.8rem; }
+        .status-item { display: inline-flex; align-items: center; background: white; padding: 5px 10px; border-radius: 20px; margin: 3px; border: 1px solid #e2e8f0; font-weight: 600; }
+        .dot { width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+        .dot-work { background: var(--info); box-shadow: 0 0 5px var(--info); }
+        .dot-break { background: var(--success); box-shadow: 0 0 5px var(--success); }
+
+        input, select { width: 100%; padding: 16px; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 1rem; margin-bottom: 15px; text-align: center; box-sizing: border-box; }
+        .btn-act { padding: 20px 10px; border-radius: 15px; border: none; color: white; font-weight: 700; display: flex; flex-direction: column; align-items: center; gap: 8px; cursor: pointer; transition: 0.2s; width: 100%; }
         .btn-act:active { transform: scale(0.95); }
         .bg-work { background: linear-gradient(135deg, #3b82f6, #2563eb); }
         .bg-break { background: linear-gradient(135deg, #10b981, #059669); }
         .bg-off { background: linear-gradient(135deg, #1e293b, #0f172a); }
         .bg-mola-off { background: linear-gradient(135deg, #f59e0b, #d97706); }
 
-        /* Giriş ve Tablo */
-        input { width: 100%; padding: 18px; border: 2px solid #e2e8f0; border-radius: 15px; font-size: 1.2rem; margin-bottom: 15px; text-align: center; }
-        .late-text { color: var(--danger) !important; font-weight: 800; } /* Geç kalma uyarısı */
-        .break-over { background: rgba(239, 68, 68, 0.1); color: var(--danger); } /* Mola aşım uyarısı */
-
-        /* Başarı Animasyonu (Tik) */
-        #success-anim { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 30px; border-radius: 50%; box-shadow: 0 0 50px rgba(0,0,0,0.2); z-index: 100; display: none; }
-        .checkmark { width: 80px; height: 80px; border-radius: 50%; display: block; stroke-width: 2; stroke: var(--success); stroke-miterlimit: 10; box-shadow: inset 0px 0px 0px var(--success); animation: fill .4s ease-in-out .4s forwards, scale .3s ease-in-out .9s both; }
-
-        table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.7rem; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; }
-        th { background: #f8fafc; padding: 12px; border-bottom: 2px solid #e2e8f0; }
-        td { padding: 12px 5px; border-bottom: 1px solid #f1f5f9; text-align: center; background: white; }
-
+        table { width: 100%; border-collapse: collapse; font-size: 0.7rem; border-radius: 10px; overflow: hidden; }
+        th { background: #f1f5f9; padding: 10px; border-bottom: 2px solid #e2e8f0; }
+        td { padding: 10px 5px; border-bottom: 1px solid #f1f5f9; text-align: center; background: white; }
+        .late { color: var(--danger); font-weight: 800; }
+        
         #reader { border-radius: 20px; overflow: hidden; border: 4px solid var(--accent); }
+        #done { position: absolute; top: 40%; left: 50%; transform: translate(-50%,-50%); z-index: 99; display: none; background: white; border-radius: 50%; padding: 20px; box-shadow: 0 0 30px rgba(0,0,0,0.2); }
     </style>
 </head>
 <body>
 
 <div class="app-container">
-    <div id="success-anim">
-        <svg class="checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
-            <circle class="checkmark__circle" cx="26" cy="26" r="25" fill="none"/>
-            <path class="checkmark__check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
-        </svg>
-    </div>
-
+    <div id="done">✅</div>
+    
     <div class="nav-header">
         <button id="t-staff" class="nav-btn active" onclick="showView('staff')">PERSONEL</button>
         <button id="t-admin" class="nav-btn" onclick="showView('admin')">YÖNETİCİ</button>
@@ -80,43 +64,60 @@
 
     <div class="content">
         <div id="view-login">
-            <h2 style="text-align:center">Personel Girişi</h2>
+            <h2 style="text-align:center">İklim Life Giriş</h2>
             <input type="password" id="pinCode" placeholder="PIN" maxlength="4" style="letter-spacing:15px; font-size:2rem;">
-            <button class="btn-act bg-off" style="width:100%;" onclick="processLogin()">Giriş Yap</button>
+            <button class="btn-act bg-off" onclick="processLogin()">Giriş Yap</button>
         </div>
 
         <div id="view-panel" class="hidden">
-            <h3 id="userName" style="text-align:center; margin-bottom:20px;"></h3>
-            <div class="action-grid">
-                <button class="btn-act bg-work" onclick="triggerQR('İşe Giriş')">🚀<br>İşe Başla</button>
-                <button class="btn-act bg-off" onclick="triggerQR('İşten Çıkış')">🏠<br>Mesai Bitir</button>
-                <button class="btn-act bg-break" onclick="triggerQR('Mola Başlat')">☕<br>Mola Başlat</button>
-                <button class="btn-act bg-mola-off" onclick="triggerQR('Mola Bitir')">✅<br>Mola Bitir</button>
+            <div class="premium-card">
+                <small>Bugünkü Vardiyanız</small>
+                <h4 id="userShift">Yükleniyor...</h4>
+                <div id="shiftStatus" style="font-size:0.75rem;">Sabah: 09:30 | Öğle: 13:00</div>
             </div>
-            <button style="width:100%; margin-top:30px; border:none; background:none; color:#64748b; font-weight:700;" onclick="secureLogout()">Güvenli Çıkış</button>
-        </div>
-
-        <div id="view-qr" class="hidden">
-            <h3 style="text-align:center; color:var(--accent)">Mağaza QR Okutun</h3>
-            <div id="reader"></div>
-            <button class="btn-act bg-off" style="width:100%; margin-top:20px;" onclick="cancelAction()">İptal Et</button>
+            
+            <h3 id="userName" style="text-align:center;"></h3>
+            
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+                <button class="btn-act bg-work" onclick="triggerQR('İşe Giriş')">🚀 İşe Başla</button>
+                <button class="btn-act bg-off" onclick="triggerQR('İşten Çıkış')">🏠 Mesai Bitir</button>
+                <button class="btn-act bg-break" onclick="triggerQR('Mola Başlat')">☕ Mola Başlat</button>
+                <button class="btn-act bg-mola-off" onclick="triggerQR('Mola Bitir')">✅ Mola Bitir</button>
+            </div>
+            <button style="width:100%; margin-top:30px; border:none; color:#94a3b8; background:none;" onclick="secureLogout()">Güvenli Çıkış</button>
         </div>
 
         <div id="view-admin" class="hidden">
             <div id="admin-gate">
-                <h2 style="text-align:center">Yönetici Girişi</h2>
-                <input type="password" id="adminKey" placeholder="Şifre">
-                <button class="btn-act bg-off" style="width:100%;" onclick="unlockAdmin()">Paneli Aç</button>
+                <input type="password" id="adminKey" placeholder="Yönetici Şifresi">
+                <button class="btn-act bg-off" onclick="unlockAdmin()">Paneli Aç</button>
             </div>
             <div id="admin-data" class="hidden">
-                <div class="summary-grid">
-                    <div class="stat-card"><span id="count-work" class="stat-val">0</span><span class="stat-label">İçeride</span></div>
-                    <div class="stat-card"><span id="count-break" class="stat-val">0</span><span class="stat-label">Molada</span></div>
+                <div class="premium-card" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: var(--primary);">
+                    <small>🏆 Haftanın Personeli</small>
+                    <h4 id="bestStaff">-</h4>
+                    <div id="performanceScore" style="font-size: 0.7rem; font-weight: 700;">Hatasızlık ve 45dk mola kuralına göre...</div>
                 </div>
+
+                <div class="stat-container">
+                    <div class="stat-box"><b id="count-work">0</b><span>İçeride</span></div>
+                    <div class="stat-box"><b id="count-break">0</b><span>Molada</span></div>
+                </div>
+
+                <div id="live-status" class="live-status-list">Anlık Durum: </div>
                 
-                <div style="display:flex; gap:10px; margin-bottom:15px;">
-                    <button class="btn-act bg-break" style="flex:2; padding:15px;" onclick="exportExcel()">Excel İndir</button>
-                    <button class="btn-act bg-off" style="flex:1; padding:15px;" onclick="clearLogs()">Sil</button>
+                <h4 style="margin-top:20px;">Vardiya Ayarları</h4>
+                <select id="shiftTarget" onchange="loadShiftSetting()">
+                    <option value="">Personel Seçin</option>
+                </select>
+                <div style="display:flex; gap:5px;">
+                    <input type="time" id="shiftTime" value="09:30">
+                    <button class="btn-act bg-work" style="padding:10px; flex:1;" onclick="saveShift()">Vardiya Ata</button>
+                </div>
+
+                <div style="display:flex; gap:10px; margin:20px 0;">
+                    <button class="btn-act bg-break" style="padding:12px;" onclick="exportExcel()">Excel</button>
+                    <button class="btn-act bg-off" style="padding:12px;" onclick="clearLogs()">Sıfırla</button>
                 </div>
 
                 <div style="overflow-x:auto;">
@@ -126,6 +127,11 @@
                     </table>
                 </div>
             </div>
+        </div>
+
+        <div id="view-qr" class="hidden">
+            <div id="reader"></div>
+            <button class="btn-act bg-off" style="margin-top:15px;" onclick="cancelAction()">Vazgeç</button>
         </div>
     </div>
 </div>
@@ -148,20 +154,33 @@
     const STORE = {
         CODE: "MAGAZA-12345",
         PASS: "1674",
-        LATE_TIME: "10:30", // Geç kalma sınırı
-        MAX_MOLA: 30, // Mola sınırı (dk)
-        STAFF: { "0600":"Kübra","6173":"Nefise","7349":"Burcu","9506":"Sultan","4672":"Derya","8672":"Yasemin","1510":"Eda","4209":"Özgün"}
+        STAFF: { "0600":"Kübra","6173":"Nefise","7349":"Burcu","9506":"Sultan","4672":"Derya","8672":"Yasemin","1510":"Eda","4209":"Özgün","1234":"Merve"}
     };
 
     let currentUser = null;
-    let currentAction = null;
+
+    if ("Notification" in window) { Notification.requestPermission(); }
+
+    function sendNotify(title, body) {
+        if (Notification.permission === "granted") {
+            new Notification(title, { body: body, icon: 'https://cdn-icons-png.flaticon.com/512/1157/1157000.png' });
+        }
+    }
 
     function showView(v) {
         ['view-login','view-panel','view-qr','view-admin'].forEach(id => document.getElementById(id).classList.add('hidden'));
+        if(v==='staff') {
+            if(currentUser) { 
+                document.getElementById('view-panel').classList.remove('hidden');
+                loadUserShift();
+            } else {
+                document.getElementById('view-login').classList.remove('hidden');
+            }
+        } else {
+            document.getElementById('view-admin').classList.remove('hidden');
+        }
         document.getElementById('t-staff').classList.toggle('active', v==='staff');
         document.getElementById('t-admin').classList.toggle('active', v==='admin');
-        if(v==='staff') currentUser ? document.getElementById('view-panel').classList.remove('hidden') : document.getElementById('view-login').classList.remove('hidden');
-        else document.getElementById('view-admin').classList.remove('hidden');
     }
 
     function processLogin() {
@@ -170,36 +189,39 @@
             currentUser = STORE.STAFF[pin]; 
             document.getElementById('userName').innerText = `Hoş Geldin, ${currentUser}`; 
             showView('staff');
-        } else alert("Hatalı PIN!");
+        } else alert("PIN Hatalı!");
     }
 
-    function triggerQR(action) {
-        currentAction = action;
+    function triggerQR(type) {
         document.getElementById('view-panel').classList.add('hidden');
         document.getElementById('view-qr').classList.remove('hidden');
         scanner.start({facingMode:"environment"}, {fps:15, qrbox:250}, res => {
             if(res === STORE.CODE) {
-                scanner.stop().then(() => saveLog());
+                scanner.stop().then(() => {
+                    const d = new Date();
+                    const time = d.getHours().toString().padStart(2,'0') + ":" + d.getMinutes().toString().padStart(2,'0');
+                    if(type === 'İşe Giriş') sendNotify("İklim Life", `${currentUser} işe başladı.`);
+                    db.ref('logs').push({ date: d.toLocaleDateString('tr-TR'), user: currentUser, type: type, time: time, ts: Date.now() })
+                    .then(() => {
+                        document.getElementById('done').style.display='block';
+                        setTimeout(() => { document.getElementById('done').style.display='none'; secureLogout(); }, 1200);
+                    });
+                });
             }
         });
     }
 
-    function saveLog() {
-        const d = new Date();
-        const time = d.getHours().toString().padStart(2,'0') + ":" + d.getMinutes().toString().padStart(2,'0');
-        
-        db.ref('logs').push({
-            date: d.toLocaleDateString('tr-TR'),
-            user: currentUser,
-            type: currentAction,
-            time: time,
-            ts: Date.now()
-        }).then(() => {
-            document.getElementById('success-anim').style.display = 'block'; // Tik animasyonu
-            setTimeout(() => {
-                document.getElementById('success-anim').style.display = 'none';
-                secureLogout();
-            }, 1500);
+    function saveShift() {
+        const user = document.getElementById('shiftTarget').value;
+        const time = document.getElementById('shiftTime').value;
+        if(!user) return alert("Personel seçin!");
+        db.ref('shifts/' + user).set(time).then(() => alert("Vardiya kaydedildi!"));
+    }
+
+    function loadUserShift() {
+        db.ref('shifts/' + currentUser).once('value', snap => {
+            const shift = snap.val() || "Belirlenmedi";
+            document.getElementById('userShift').innerText = shift;
         });
     }
 
@@ -207,12 +229,19 @@
         if(document.getElementById('adminKey').value === STORE.PASS) {
             document.getElementById('admin-gate').classList.add('hidden');
             document.getElementById('admin-data').classList.remove('hidden');
+            const select = document.getElementById('shiftTarget');
+            select.innerHTML = '<option value="">Personel Seçin</option>';
+            Object.values(STORE.STAFF).forEach(name => {
+                select.innerHTML += `<option value="${name}">${name}</option>`;
+            });
             db.ref('logs').on('value', snap => {
                 const logs = []; snap.forEach(c => logs.push(c.val()));
                 const report = processReport(logs);
-                window.finalData = report;
-                renderTable(report);
-                updateDashboard(report);
+                window.fData = report;
+                db.ref('shifts').once('value', sSnap => {
+                    renderAdmin(report, sSnap.val() || {});
+                    calculatePerformance(report, sSnap.val() || {});
+                });
             });
         }
     }
@@ -221,72 +250,76 @@
         const daily = {};
         logs.forEach(l => {
             const id = `${l.date}_${l.user}`;
-            if(!daily[id]) daily[id] = { Tarih: l.date, İsim: l.user, Giriş: "-", M_Başla: "-", M_Bitir: "-", Çıkış: "-" };
+            if(!daily[id]) daily[id] = { Tarih: l.date, İsim: l.user, Giriş: "-", M_Bas: "-", M_Bit: "-", Çıkış: "-" };
             if(l.type === 'İşe Giriş') daily[id].Giriş = l.time;
-            if(l.type === 'Mola Başlat') daily[id].M_Başla = l.time;
-            if(l.type === 'Mola Bitir') daily[id].M_Bitir = l.time;
+            if(l.type === 'Mola Başlat') daily[id].M_Bas = l.time;
+            if(l.type === 'Mola Bitir') daily[id].M_Bit = l.time;
             if(l.type === 'İşten Çıkış') daily[id].Çıkış = l.time;
         });
         return Object.values(daily).reverse();
     }
 
-    function renderTable(data) {
+    function renderAdmin(data, shifts) {
         const body = document.getElementById('logTableBody');
-        body.innerHTML = "";
-        data.forEach(r => {
-            const isLate = r.Giriş !== "-" && r.Giriş > STORE.LATE_TIME; // 10:30 Kontrolü
-            const molaDk = diffMin(r.M_Başla, r.M_Bitir);
-            const molaAsim = molaDk > STORE.MAX_MOLA; // 30 dk Kontrolü
-
-            // Canlı Durum Rozeti Belirleme
-            let statusBadge = "";
-            if(r.Giriş !== "-" && r.Çıkış === "-") {
-                statusBadge = r.M_Başla !== "-" && r.M_Bitir === "-" ? 
-                    '<span class="status-dot badge-break"></span>' : 
-                    '<span class="status-dot badge-work"></span>';
-            }
-
-            body.innerHTML += `
-                <tr class="${molaAsim ? 'break-over' : ''}">
-                    <td>${r.Tarih}</td>
-                    <td style="text-align:left">${statusBadge}${r.İsim}</td>
-                    <td class="${isLate ? 'late-text' : ''}">${r.Giriş}</td>
-                    <td>${r.M_Başla}</td>
-                    <td>${r.M_Bitir}</td>
-                    <td>${r.Çıkış}</td>
-                </tr>`;
-        });
-    }
-
-    function updateDashboard(data) {
+        const live = document.getElementById('live-status');
         const today = new Date().toLocaleDateString('tr-TR');
-        const work = data.filter(r => r.Tarih === today && r.Giriş !== "-" && r.Çıkış === "-" && (r.M_Başla === "-" || r.M_Bitir !== "-")).length;
-        const breaks = data.filter(r => r.Tarih === today && r.M_Başla !== "-" && r.M_Bitir === "-").length;
-        document.getElementById('count-work').innerText = work;
-        document.getElementById('count-break').innerText = breaks;
+        body.innerHTML = ""; live.innerHTML = "<b>Anlık Durum:</b><br>";
+        let inWork = 0, inBreak = 0;
+
+        data.forEach(r => {
+            const isToday = r.Tarih === today;
+            // Yeni Dinamik Kural: 12:00'den önceyse sabahçı (09:30), sonraysa öğleci (13:00)
+            const assignedShift = shifts[r.İsim] || "09:30";
+            const threshold = (assignedShift < "12:00") ? "09:30" : "13:00";
+            const isLate = r.Giriş !== "-" && r.Giriş > threshold;
+            
+            if(isToday && r.Giriş !== "-" && r.Çıkış === "-") {
+                const onBreak = r.M_Bas !== "-" && r.M_Bit === "-";
+                if(onBreak) inBreak++; else inWork++;
+                live.innerHTML += `<div class="status-item"><span class="dot ${onBreak ? 'dot-break' : 'dot-work'}"></span>${r.İsim}</div>`;
+            }
+            body.innerHTML += `<tr><td>${r.Tarih}</td><td>${r.İsim}</td><td class="${isLate ? 'late' : ''}">${r.Giriş}</td><td>${r.M_Bas}</td><td>${r.M_Bit}</td><td>${r.Çıkış}</td></tr>`;
+        });
+        document.getElementById('count-work').innerText = inWork;
+        document.getElementById('count-break').innerText = inBreak;
     }
 
-    function diffMin(t1, t2) {
-        if(t1==="-" || t2==="-") return 0;
-        const [h1, m1] = t1.split(":").map(Number);
-        const [h2, m2] = t2.split(":").map(Number);
-        return (h2 * 60 + m2) - (h1 * 60 + m1);
+    function calculatePerformance(data, shifts) {
+        const scores = {};
+        data.forEach(r => {
+            if(!scores[r.İsim]) scores[r.İsim] = 100;
+            const assignedShift = shifts[r.İsim] || "09:30";
+            const threshold = (assignedShift < "12:00") ? "09:30" : "13:00";
+            if(r.Giriş !== "-" && r.Giriş > threshold) scores[r.İsim] -= 10;
+            if(r.M_Bas !== "-" && r.M_Bit !== "-") {
+                const [h1, m1] = r.M_Bas.split(":").map(Number);
+                const [h2, m2] = r.M_Bit.split(":").map(Number);
+                // Yeni Mola Kuralı: 45 Dakika
+                if(((h2*60)+m2) - ((h1*60)+m1) > 45) scores[r.İsim] -= 5;
+            }
+        });
+        let best = { name: "-", score: -1000 };
+        for (let name in scores) { if(scores[name] > best.score) best = { name: name, score: scores[name] }; }
+        document.getElementById('bestStaff').innerText = best.name;
     }
 
     function exportExcel() {
-        const rows = window.finalData.map(r => ({
-            ...r, "Mola (Dk)": diffMin(r.M_Başla, r.M_Bitir)
-        }));
-        const ws = XLSX.utils.json_to_sheet(rows);
+        const ws = XLSX.utils.json_to_sheet(window.fData);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "IklimLife");
-        XLSX.writeFile(wb, "IklimLife_Rapor.xlsx");
+        XLSX.utils.book_append_sheet(wb, ws, "Rapor");
+        XLSX.writeFile(wb, "IklimLife_Takip.xlsx");
     }
 
-    function clearLogs() { if(confirm("Tüm veriler silinsin mi?")) db.ref('logs').set(null); }
+    function clearLogs() { if(confirm("Tüm kayıtlar silinsin mi?")) db.ref('logs').set(null); }
     function secureLogout() { currentUser=null; document.getElementById('pinCode').value=""; showView('staff'); }
     function cancelAction() { scanner.stop().then(() => showView('staff')); }
-    function lockAdmin() { showView('staff'); }
+    function loadShiftSetting() {
+        const user = document.getElementById('shiftTarget').value;
+        if(!user) return;
+        db.ref('shifts/' + user).once('value', s => {
+            if(s.exists()) document.getElementById('shiftTime').value = s.val();
+        });
+    }
 </script>
 </body>
 </html>

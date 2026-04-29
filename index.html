@@ -282,9 +282,9 @@
     function loadUserShift() {
         // Personel ekranında otomatik vardiya tahmini gösterimi
         db.ref('logs').orderByChild('user').equalTo(currentUser).limitToLast(5).once('value', snap => {
-            let lastIn = "10:30";
+            let lastIn = "09:30";
             snap.forEach(l => { if(l.val().type === 'İşe Giriş') lastIn = l.val().time; });
-            const pref = lastIn < "12:00" ? "10:30" : "13:00";
+            const pref = lastIn < "12:00" ? "09:30" : "13:00";
             document.getElementById('userShift').innerText = pref;
         });
     }

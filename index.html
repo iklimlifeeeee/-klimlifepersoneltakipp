@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>İklim Life | Takip Premium v6.5</title>
+    <title>İklim Life | Takip Premium v6.2</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -46,9 +46,9 @@
         .bg-off { background: var(--primary); }
         .bg-mola-off { background: linear-gradient(135deg, #f59e0b, #d97706); }
 
-        table { width: 100%; border-collapse: collapse; font-size: 0.7rem; border-radius: 12px; overflow: hidden; }
-        th { background: #f8fafc; padding: 10px; border-bottom: 2px solid #e2e8f0; font-weight: 800; }
-        td { padding: 10px 5px; border-bottom: 1px solid #f1f5f9; text-align: center; background: white; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.75rem; border-radius: 12px; overflow: hidden; }
+        th { background: #f8fafc; padding: 12px; border-bottom: 2px solid #e2e8f0; font-weight: 800; }
+        td { padding: 12px 8px; border-bottom: 1px solid #f1f5f9; text-align: center; background: white; }
         .late { color: var(--danger); font-weight: 800; background: #fef2f2; }
         
         #reader { border-radius: 20px; overflow: hidden; border: 4px solid var(--accent); }
@@ -120,7 +120,7 @@
 
                 <div style="overflow-x:auto;">
                     <table>
-                        <thead><tr><th>Tarih</th><th>İsim</th><th>Giriş</th><th>Mola B.</th><th>Mola S.</th><th>Çıkış</th></tr></thead>
+                        <thead><tr><th>Tarih</th><th>İsim</th><th>Giriş</th><th>Mola Baş</th><th>Mola Bit</th><th>Çıkış</th></tr></thead>
                         <tbody id="logTableBody"></tbody>
                     </table>
                 </div>
@@ -189,7 +189,7 @@
 
     function checkActiveMola() {
         const today = new Date().toLocaleDateString('tr-TR');
-        db.ref('logs').orderByChild('user').equalTo(currentUser).limitToLast(10).once('value', snap => {
+        db.ref('logs').orderByChild('user').equalTo(currentUser).limitToLast(5).once('value', snap => {
             let lastStart = null; let isRunning = false;
             snap.forEach(l => {
                 if(l.val().date === today) {
@@ -231,9 +231,19 @@
                     scanner.stop().then(() => {
                         const d = new Date();
                         const time = d.getHours().toString().padStart(2,'0') + ":" + d.getMinutes().toString().padStart(2,'0');
-                        db.ref('logs').push({ date: d.toLocaleDateString('tr-TR'), user: currentUser, type: type, time: time, ts: Date.now() }).then(() => {
+                        db.ref('logs').push({ 
+                            date: d.toLocaleDateString('tr-TR'), 
+                            user: currentUser, 
+                            type: type, 
+                            time: time, 
+                            ts: Date.now() 
+                        }).then(() => {
                             document.getElementById('done').style.display='block';
-                            setTimeout(() => { document.getElementById('done').style.display='none'; checkActiveMola(); showView('staff'); }, 1200);
+                            setTimeout(() => { 
+                                document.getElementById('done').style.display='none'; 
+                                checkActiveMola();
+                                showView('staff');
+                            }, 1200);
                         });
                     });
                 }
@@ -291,26 +301,26 @@
 
     function exportExcel() {
         const excelData = window.fData.map(r => {
-            let molaDakika = 0;
+            let molaSuresi = 0;
             if(r.M_Bas !== "-" && r.M_Bit !== "-") {
                 const [h1, m1] = r.M_Bas.split(":").map(Number);
                 const [h2, m2] = r.M_Bit.split(":").map(Number);
-                molaDakika = ((h2 * 60) + m2) - ((h1 * 60) + m1);
+                molaSuresi = ((h2 * 60) + m2) - ((h1 * 60) + m1);
             }
             return {
                 "Tarih": r.Tarih,
                 "İsim": r.İsim,
-                "Giriş Saati": r.Giriş,
+                "İşe Giriş": r.Giriş,
                 "Mola Başlangıç": r.M_Bas,
                 "Mola Bitiş": r.M_Bit,
-                "Mola Süresi (Dk)": molaDakika > 0 ? molaDakika : (r.M_Bas !== "-" ? "Sürüyor" : "0"),
-                "Çıkış Saati": r.Çıkış
+                "Mola Süresi (Dk)": molaSuresi > 0 ? molaSuresi : "0",
+                "İşten Çıkış": r.Çıkış
             };
         });
         const ws = XLSX.utils.json_to_sheet(excelData);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "IklimLife_Rapor");
-        XLSX.writeFile(wb, "IklimLife_Detayli_Rapor.xlsx");
+        XLSX.utils.book_append_sheet(wb, ws, "Rapor");
+        XLSX.writeFile(wb, "IklimLife_Mola_Detayli_Rapor.xlsx");
     }
 
     function loadUserShift() {

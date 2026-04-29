@@ -3,38 +3,76 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>İklim Life | Bulut Takip Sistemi</title>
+    <title>İklim Life | Premium Takip</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
-        :root { --primary: #1e293b; --accent: #f59e0b; --success: #10b981; --danger: #ef4444; --info: #3b82f6; --bg-gray: #f8fafc; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg-gray); margin: 0; display: flex; justify-content: center; }
-        .app-container { width: 100%; max-width: 440px; background: white; min-height: 100vh; display: flex; flex-direction: column; box-shadow: 0 0 20px rgba(0,0,0,0.1); }
-        .nav-header { display: flex; background: var(--primary); padding: 15px; gap: 10px; }
-        .nav-btn { flex: 1; padding: 12px; border: none; background: rgba(255,255,255,0.1); color: white; border-radius: 8px; font-weight: 600; cursor: pointer; }
-        .nav-btn.active { background: white; color: var(--primary); }
-        .content { padding: 20px; flex: 1; }
+        /* Modern ve Karanlık Mod Uyumlu Renk Paleti */
+        :root { 
+            --primary: #0f172a; --accent: #f59e0b; --success: #10b981; --danger: #ef4444; 
+            --info: #3b82f6; --bg-gray: #f1f5f9; --card-bg: #ffffff; --text: #1e293b;
+        }
+        
+        /* Genel Tasarım */
+        body { font-family: 'Inter', 'Segoe UI', sans-serif; background: var(--bg-gray); margin: 0; display: flex; justify-content: center; color: var(--text); transition: 0.3s; }
+        .app-container { width: 100%; max-width: 440px; background: var(--card-bg); min-height: 100vh; display: flex; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.1); position: relative; overflow: hidden; }
+        
+        /* Header */
+        .nav-header { display: flex; background: var(--primary); padding: 20px 15px; gap: 10px; border-bottom: 3px solid var(--accent); }
+        .nav-btn { flex: 1; padding: 12px; border: none; background: rgba(255,255,255,0.05); color: #94a3b8; border-radius: 12px; font-weight: 700; cursor: pointer; transition: 0.3s; }
+        .nav-btn.active { background: var(--accent); color: var(--primary); }
+
+        .content { padding: 25px; flex: 1; z-index: 1; }
         .hidden { display: none !important; }
-        input { width: 100%; padding: 15px; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 1.1rem; margin-bottom: 15px; box-sizing: border-box; text-align: center; }
-        .btn-main { width: 100%; padding: 16px; border: none; border-radius: 12px; font-weight: 700; cursor: pointer; transition: 0.3s; }
-        .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 10px; }
-        .btn-act { padding: 25px 10px; border-radius: 15px; border: none; color: white; font-weight: 700; display: flex; flex-direction: column; align-items: center; gap: 10px; cursor: pointer; }
-        .bg-work { background: var(--info); }
-        .bg-break { background: var(--success); }
-        .bg-off { background: var(--primary); }
-        .bg-mola-off { background: var(--accent); }
-        #reader { width: 100%; border-radius: 20px; overflow: hidden; border: 4px solid var(--accent); margin-top: 10px; }
-        table { width: 100%; border-collapse: collapse; font-size: 0.75rem; margin-top: 15px; }
-        th, td { padding: 10px 5px; border: 1px solid #eee; text-align: center; }
-        th { background: #f1f5f9; }
-        .admin-actions { display: flex; gap: 10px; margin-bottom: 20px; }
+
+        /* Grafiksel Özet Kartları */
+        .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+        .stat-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 15px; text-align: center; }
+        .stat-val { display: block; font-size: 1.5rem; font-weight: 800; color: var(--accent); }
+        .stat-label { font-size: 0.7rem; color: #64748b; text-transform: uppercase; letter-spacing: 1px; }
+
+        /* Status Badges (Canlı Durum) */
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+        .badge-work { background: var(--info); box-shadow: 0 0 8px var(--info); }
+        .badge-break { background: var(--success); box-shadow: 0 0 8px var(--success); }
+
+        /* Butonlar */
+        .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .btn-act { padding: 25px 10px; border-radius: 20px; border: none; color: white; font-weight: 700; display: flex; flex-direction: column; align-items: center; gap: 12px; cursor: pointer; transition: 0.3s; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .btn-act:active { transform: scale(0.95); }
+        .bg-work { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+        .bg-break { background: linear-gradient(135deg, #10b981, #059669); }
+        .bg-off { background: linear-gradient(135deg, #1e293b, #0f172a); }
+        .bg-mola-off { background: linear-gradient(135deg, #f59e0b, #d97706); }
+
+        /* Giriş ve Tablo */
+        input { width: 100%; padding: 18px; border: 2px solid #e2e8f0; border-radius: 15px; font-size: 1.2rem; margin-bottom: 15px; text-align: center; }
+        .late-text { color: var(--danger) !important; font-weight: 800; } /* Geç kalma uyarısı */
+        .break-over { background: rgba(239, 68, 68, 0.1); color: var(--danger); } /* Mola aşım uyarısı */
+
+        /* Başarı Animasyonu (Tik) */
+        #success-anim { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 30px; border-radius: 50%; box-shadow: 0 0 50px rgba(0,0,0,0.2); z-index: 100; display: none; }
+        .checkmark { width: 80px; height: 80px; border-radius: 50%; display: block; stroke-width: 2; stroke: var(--success); stroke-miterlimit: 10; box-shadow: inset 0px 0px 0px var(--success); animation: fill .4s ease-in-out .4s forwards, scale .3s ease-in-out .9s both; }
+
+        table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.7rem; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; }
+        th { background: #f8fafc; padding: 12px; border-bottom: 2px solid #e2e8f0; }
+        td { padding: 12px 5px; border-bottom: 1px solid #f1f5f9; text-align: center; background: white; }
+
+        #reader { border-radius: 20px; overflow: hidden; border: 4px solid var(--accent); }
     </style>
 </head>
 <body>
 
 <div class="app-container">
+    <div id="success-anim">
+        <svg class="checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
+            <circle class="checkmark__circle" cx="26" cy="26" r="25" fill="none"/>
+            <path class="checkmark__check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+        </svg>
+    </div>
+
     <div class="nav-header">
         <button id="t-staff" class="nav-btn active" onclick="showView('staff')">PERSONEL</button>
         <button id="t-admin" class="nav-btn" onclick="showView('admin')">YÖNETİCİ</button>
@@ -43,45 +81,50 @@
     <div class="content">
         <div id="view-login">
             <h2 style="text-align:center">Personel Girişi</h2>
-            <input type="password" id="pinCode" placeholder="PIN Kodunuz" maxlength="4" style="font-size:2rem; letter-spacing:10px;">
-            <button class="btn-main" style="background:var(--primary); color:white;" onclick="processLogin()">Giriş Yap</button>
+            <input type="password" id="pinCode" placeholder="PIN" maxlength="4" style="letter-spacing:15px; font-size:2rem;">
+            <button class="btn-act bg-off" style="width:100%;" onclick="processLogin()">Giriş Yap</button>
         </div>
 
         <div id="view-panel" class="hidden">
-            <h2 id="userName" style="text-align:center; color:var(--primary);">Merhaba</h2>
+            <h3 id="userName" style="text-align:center; margin-bottom:20px;"></h3>
             <div class="action-grid">
                 <button class="btn-act bg-work" onclick="triggerQR('İşe Giriş')">🚀<br>İşe Başla</button>
                 <button class="btn-act bg-off" onclick="triggerQR('İşten Çıkış')">🏠<br>Mesai Bitir</button>
                 <button class="btn-act bg-break" onclick="triggerQR('Mola Başlat')">☕<br>Mola Başlat</button>
                 <button class="btn-act bg-mola-off" onclick="triggerQR('Mola Bitir')">✅<br>Mola Bitir</button>
             </div>
-            <button class="btn-main" style="background:#f1f5f9; color:#475569; margin-top:30px;" onclick="secureLogout()">Güvenli Çıkış</button>
+            <button style="width:100%; margin-top:30px; border:none; background:none; color:#64748b; font-weight:700;" onclick="secureLogout()">Güvenli Çıkış</button>
         </div>
 
         <div id="view-qr" class="hidden">
-            <h2 style="text-align:center; color:var(--accent)">Mağaza QR Okutun</h2>
+            <h3 style="text-align:center; color:var(--accent)">Mağaza QR Okutun</h3>
             <div id="reader"></div>
-            <button class="btn-main" style="background:var(--danger); color:white; margin-top:20px;" onclick="cancelAction()">İptal Et</button>
+            <button class="btn-act bg-off" style="width:100%; margin-top:20px;" onclick="cancelAction()">İptal Et</button>
         </div>
 
         <div id="view-admin" class="hidden">
             <div id="admin-gate">
                 <h2 style="text-align:center">Yönetici Girişi</h2>
-                <input type="password" id="adminKey" placeholder="Yönetici Şifresi">
-                <button class="btn-main" style="background:var(--primary); color:white;" onclick="unlockAdmin()">Paneli Aç</button>
+                <input type="password" id="adminKey" placeholder="Şifre">
+                <button class="btn-act bg-off" style="width:100%;" onclick="unlockAdmin()">Paneli Aç</button>
             </div>
             <div id="admin-data" class="hidden">
-                <div class="admin-actions">
-                    <button class="btn-main" style="background:var(--success); color:white; flex:2;" onclick="exportExcel()">Excel İndir</button>
-                    <button class="btn-main" style="background:var(--danger); color:white; flex:1;" onclick="clearCloudLogs()">Temizle</button>
+                <div class="summary-grid">
+                    <div class="stat-card"><span id="count-work" class="stat-val">0</span><span class="stat-label">İçeride</span></div>
+                    <div class="stat-card"><span id="count-break" class="stat-val">0</span><span class="stat-label">Molada</span></div>
                 </div>
-                <div style="overflow-x:auto; max-height: 400px;">
+                
+                <div style="display:flex; gap:10px; margin-bottom:15px;">
+                    <button class="btn-act bg-break" style="flex:2; padding:15px;" onclick="exportExcel()">Excel İndir</button>
+                    <button class="btn-act bg-off" style="flex:1; padding:15px;" onclick="clearLogs()">Sil</button>
+                </div>
+
+                <div style="overflow-x:auto;">
                     <table>
-                        <thead><tr><th>Tarih</th><th>İsim</th><th>Giriş</th><th>M.Başla</th><th>M.Bitir</th><th>Çıkış</th></tr></thead>
+                        <thead><tr><th>Tarih</th><th>İsim</th><th>Giriş</th><th>Mola</th><th>Bitir</th><th>Çıkış</th></tr></thead>
                         <tbody id="logTableBody"></tbody>
                     </table>
                 </div>
-                <button class="btn-main" style="background:#f1f5f9; color:#475569; margin-top:20px;" onclick="lockAdmin()">Panelden Çık</button>
             </div>
         </div>
     </div>
@@ -100,154 +143,150 @@
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
+    const scanner = new Html5Qrcode("reader");
 
     const STORE = {
         CODE: "MAGAZA-12345",
         PASS: "1674",
-        STAFF: { 
-            "0600": "Kübra", "6173": "Nefise", "7349": "Burcu", 
-            "9506": "Sultan", "4672": "Derya", "8672": "Yasemin", 
-            "1510": "Eda", "4209": "Özgün" 
-        }
+        LATE_TIME: "10:30", // Geç kalma sınırı
+        MAX_MOLA: 30, // Mola sınırı (dk)
+        STAFF: { "0600":"Kübra","6173":"Nefise","7349":"Burcu","9506":"Sultan","4672":"Derya","8672":"Yasemin","1510":"Eda","4209":"Özgün"}
     };
 
     let currentUser = null;
     let currentAction = null;
-    const scanner = new Html5Qrcode("reader");
 
-    function showView(viewName) {
-        document.getElementById('t-staff').classList.toggle('active', viewName === 'staff');
-        document.getElementById('t-admin').classList.toggle('active', viewName === 'admin');
-        ['view-login', 'view-panel', 'view-qr', 'view-admin'].forEach(id => document.getElementById(id).classList.add('hidden'));
-
-        if(viewName === 'staff') {
-            if(currentUser) document.getElementById('view-panel').classList.remove('hidden');
-            else document.getElementById('view-login').classList.remove('hidden');
-        } else {
-            document.getElementById('view-admin').classList.remove('hidden');
-            lockAdmin();
-        }
+    function showView(v) {
+        ['view-login','view-panel','view-qr','view-admin'].forEach(id => document.getElementById(id).classList.add('hidden'));
+        document.getElementById('t-staff').classList.toggle('active', v==='staff');
+        document.getElementById('t-admin').classList.toggle('active', v==='admin');
+        if(v==='staff') currentUser ? document.getElementById('view-panel').classList.remove('hidden') : document.getElementById('view-login').classList.remove('hidden');
+        else document.getElementById('view-admin').classList.remove('hidden');
     }
 
     function processLogin() {
         const pin = document.getElementById('pinCode').value;
-        if(STORE.STAFF[pin]) {
-            currentUser = STORE.STAFF[pin];
-            document.getElementById('userName').innerText = `Hoş Geldin, ${currentUser}`;
+        if(STORE.STAFF[pin]) { 
+            currentUser = STORE.STAFF[pin]; 
+            document.getElementById('userName').innerText = `Hoş Geldin, ${currentUser}`; 
             showView('staff');
-        } else { alert("Hatalı PIN!"); }
-    }
-
-    function secureLogout() {
-        currentUser = null;
-        document.getElementById('pinCode').value = "";
-        showView('staff');
+        } else alert("Hatalı PIN!");
     }
 
     function triggerQR(action) {
         currentAction = action;
         document.getElementById('view-panel').classList.add('hidden');
         document.getElementById('view-qr').classList.remove('hidden');
-        
-        scanner.start({ facingMode: "environment" }, { fps: 15, qrbox: 250 }, (text) => {
-            if(text === STORE.CODE) {
-                scanner.stop().then(() => {
-                    const d = new Date();
-                    const logEntry = {
-                        date: d.toLocaleDateString('tr-TR'),
-                        user: currentUser,
-                        type: currentAction,
-                        time: d.getHours().toString().padStart(2,'0') + ":" + d.getMinutes().toString().padStart(2,'0'),
-                        timestamp: Date.now()
-                    };
-                    
-                    db.ref('logs').push(logEntry).then(() => {
-                        alert("Kayıt Başarılı!");
-                        secureLogout();
-                    });
-                });
+        scanner.start({facingMode:"environment"}, {fps:15, qrbox:250}, res => {
+            if(res === STORE.CODE) {
+                scanner.stop().then(() => saveLog());
             }
-        }).catch(e => alert("Kamera Hatası!"));
+        });
     }
 
-    function cancelAction() { scanner.stop().then(() => showView('staff')); }
+    function saveLog() {
+        const d = new Date();
+        const time = d.getHours().toString().padStart(2,'0') + ":" + d.getMinutes().toString().padStart(2,'0');
+        
+        db.ref('logs').push({
+            date: d.toLocaleDateString('tr-TR'),
+            user: currentUser,
+            type: currentAction,
+            time: time,
+            ts: Date.now()
+        }).then(() => {
+            document.getElementById('success-anim').style.display = 'block'; // Tik animasyonu
+            setTimeout(() => {
+                document.getElementById('success-anim').style.display = 'none';
+                secureLogout();
+            }, 1500);
+        });
+    }
 
     function unlockAdmin() {
         if(document.getElementById('adminKey').value === STORE.PASS) {
             document.getElementById('admin-gate').classList.add('hidden');
             document.getElementById('admin-data').classList.remove('hidden');
-            
-            db.ref('logs').on('value', (snapshot) => {
-                const logs = [];
-                snapshot.forEach((child) => { logs.push(child.val()); });
-                const report = processLogsToSingleRow(logs);
-                renderAdminTable(report);
-                window.processedData = report;
+            db.ref('logs').on('value', snap => {
+                const logs = []; snap.forEach(c => logs.push(c.val()));
+                const report = processReport(logs);
+                window.finalData = report;
+                renderTable(report);
+                updateDashboard(report);
             });
-        } else { alert("Hatalı Şifre!"); }
+        }
     }
 
-    function processLogsToSingleRow(logs) {
-        const dailyData = {};
+    function processReport(logs) {
+        const daily = {};
         logs.forEach(l => {
-            const key = `${l.date}_${l.user}`;
-            if(!dailyData[key]) {
-                dailyData[key] = { Tarih: l.date, İsim: l.user, Giriş: "-", M_Basla: "-", M_Bitir: "-", Çıkış: "-" };
-            }
-            if(l.type === 'İşe Giriş') dailyData[key].Giriş = l.time;
-            if(l.type === 'Mola Başlat') dailyData[key].M_Basla = l.time;
-            if(l.type === 'Mola Bitir') dailyData[key].M_Bitir = l.time;
-            if(l.type === 'İşten Çıkış') dailyData[key].Çıkış = l.time;
+            const id = `${l.date}_${l.user}`;
+            if(!daily[id]) daily[id] = { Tarih: l.date, İsim: l.user, Giriş: "-", M_Başla: "-", M_Bitir: "-", Çıkış: "-" };
+            if(l.type === 'İşe Giriş') daily[id].Giriş = l.time;
+            if(l.type === 'Mola Başlat') daily[id].M_Başla = l.time;
+            if(l.type === 'Mola Bitir') daily[id].M_Bitir = l.time;
+            if(l.type === 'İşten Çıkış') daily[id].Çıkış = l.time;
         });
-        return Object.values(dailyData).reverse();
+        return Object.values(daily).reverse();
     }
 
-    function renderAdminTable(data) {
+    function renderTable(data) {
         const body = document.getElementById('logTableBody');
         body.innerHTML = "";
         data.forEach(r => {
-            body.innerHTML += `<tr><td>${r.Tarih}</td><td>${r.İsim}</td><td>${r.Giriş}</td><td>${r.M_Basla}</td><td>${r.M_Bitir}</td><td>${r.Çıkış}</td></tr>`;
+            const isLate = r.Giriş !== "-" && r.Giriş > STORE.LATE_TIME; // 10:30 Kontrolü
+            const molaDk = diffMin(r.M_Başla, r.M_Bitir);
+            const molaAsim = molaDk > STORE.MAX_MOLA; // 30 dk Kontrolü
+
+            // Canlı Durum Rozeti Belirleme
+            let statusBadge = "";
+            if(r.Giriş !== "-" && r.Çıkış === "-") {
+                statusBadge = r.M_Başla !== "-" && r.M_Bitir === "-" ? 
+                    '<span class="status-dot badge-break"></span>' : 
+                    '<span class="status-dot badge-work"></span>';
+            }
+
+            body.innerHTML += `
+                <tr class="${molaAsim ? 'break-over' : ''}">
+                    <td>${r.Tarih}</td>
+                    <td style="text-align:left">${statusBadge}${r.İsim}</td>
+                    <td class="${isLate ? 'late-text' : ''}">${r.Giriş}</td>
+                    <td>${r.M_Başla}</td>
+                    <td>${r.M_Bitir}</td>
+                    <td>${r.Çıkış}</td>
+                </tr>`;
         });
     }
 
-    function calculateMinutes(t1, t2) {
-        if(t1 === "-" || t2 === "-") return 0;
+    function updateDashboard(data) {
+        const today = new Date().toLocaleDateString('tr-TR');
+        const work = data.filter(r => r.Tarih === today && r.Giriş !== "-" && r.Çıkış === "-" && (r.M_Başla === "-" || r.M_Bitir !== "-")).length;
+        const breaks = data.filter(r => r.Tarih === today && r.M_Başla !== "-" && r.M_Bitir === "-").length;
+        document.getElementById('count-work').innerText = work;
+        document.getElementById('count-break').innerText = breaks;
+    }
+
+    function diffMin(t1, t2) {
+        if(t1==="-" || t2==="-") return 0;
         const [h1, m1] = t1.split(":").map(Number);
         const [h2, m2] = t2.split(":").map(Number);
         return (h2 * 60 + m2) - (h1 * 60 + m1);
     }
 
     function exportExcel() {
-        if(!window.processedData) return;
-        const finalData = window.processedData.map(r => {
-            const molaDk = calculateMinutes(r.M_Basla, r.M_Bitir);
-            return {
-                "Tarih": r.Tarih,
-                "İsim": r.İsim,
-                "İşe Giriş": r.Giriş,
-                "Mola Başlat": r.M_Basla,
-                "Mola Bitir": r.M_Bitir,
-                "Mola Süresi (Dk)": molaDk > 0 ? molaDk : 0,
-                "İşten Çıkış": r.Çıkış
-            };
-        });
-        const ws = XLSX.utils.json_to_sheet(finalData);
+        const rows = window.finalData.map(r => ({
+            ...r, "Mola (Dk)": diffMin(r.M_Başla, r.M_Bitir)
+        }));
+        const ws = XLSX.utils.json_to_sheet(rows);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Günlük_Rapor");
-        XLSX.writeFile(wb, "Iklim_Life_Personel_Takip.xlsx");
+        XLSX.utils.book_append_sheet(wb, ws, "IklimLife");
+        XLSX.writeFile(wb, "IklimLife_Rapor.xlsx");
     }
 
-    function clearCloudLogs() {
-        if(confirm("Tüm veriler silinecek. Emin misiniz?")) {
-            db.ref('logs').set(null).then(() => { alert("Temizlendi."); });
-        }
-    }
-
-    function lockAdmin() {
-        document.getElementById('adminKey').value = "";
-        document.getElementById('admin-gate').classList.remove('hidden');
-        document.getElementById('admin-data').classList.add('hidden');
-    }
+    function clearLogs() { if(confirm("Tüm veriler silinsin mi?")) db.ref('logs').set(null); }
+    function secureLogout() { currentUser=null; document.getElementById('pinCode').value=""; showView('staff'); }
+    function cancelAction() { scanner.stop().then(() => showView('staff')); }
+    function lockAdmin() { showView('staff'); }
 </script>
 </body>
 </html>

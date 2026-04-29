@@ -22,6 +22,7 @@
         
         .hidden { display: none !important; }
 
+        /* MOLA BARI VE KRONOMETRE STİLLERİ */
         .premium-card { background: linear-gradient(135deg, #1e293b, #0f172a); color: white; padding: 18px; border-radius: 15px; margin-bottom: 15px; position: relative; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
         .mola-timer { font-size: 2.5rem; font-weight: 800; color: var(--accent); text-align: center; margin: 5px 0; font-family: monospace; }
         .progress-bg { width: 100%; background: rgba(255,255,255,0.1); height: 12px; border-radius: 6px; margin: 10px 0; overflow: hidden; }
@@ -187,6 +188,7 @@
         } else alert("PIN Hatalı!");
     }
 
+    // MOLA KRONOMETRE MANTIĞI
     function checkActiveMola() {
         const today = new Date().toLocaleDateString('tr-TR');
         db.ref('logs').orderByChild('user').equalTo(currentUser).limitToLast(5).once('value', snap => {
@@ -214,9 +216,11 @@
             const mins = Math.floor(diff / 60000);
             const secs = Math.floor((diff % 60000) / 1000);
             document.getElementById('live-timer').innerText = `${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
+            
             const progress = (mins / 45) * 100;
             document.getElementById('p-bar').style.width = Math.min(progress, 100) + "%";
             document.getElementById('p-bar').style.background = progress > 100 ? "var(--danger)" : "var(--success)";
+            
             const left = 45 - mins;
             document.getElementById('mola-left').innerText = left > 0 ? left + " dk kaldı" : "Süre Doldu!";
         }, 1000);
@@ -308,19 +312,16 @@
                 molaSuresi = ((h2 * 60) + m2) - ((h1 * 60) + m1);
             }
             return {
-                "Tarih": r.Tarih,
-                "İsim": r.İsim,
-                "İşe Giriş": r.Giriş,
-                "Mola Başlangıç": r.M_Bas,
-                "Mola Bitiş": r.M_Bit,
-                "Mola Süresi (Dk)": molaSuresi > 0 ? molaSuresi : "0",
+                "Tarih": r.Tarih, "İsim": r.İsim,
+                "İşe Giriş": r.Giriş, "Mola Başlangıç": r.M_Bas,
+                "Mola Bitiş": r.M_Bit, "Toplam Mola (Dk)": molaSuresi > 0 ? molaSuresi : "0",
                 "İşten Çıkış": r.Çıkış
             };
         });
         const ws = XLSX.utils.json_to_sheet(excelData);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Rapor");
-        XLSX.writeFile(wb, "IklimLife_Mola_Detayli_Rapor.xlsx");
+        XLSX.writeFile(wb, "IklimLife_Mola_Raporu.xlsx");
     }
 
     function loadUserShift() {

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>İklim Life | Takip Premium v7.0</title>
+    <title>İklim Life | Takip Premium v7.1</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -30,13 +30,11 @@
         .announcement-bar { background: #fffbeb; border: 1px solid #fef3c7; padding: 10px; border-radius: 10px; margin-bottom: 15px; font-size: 0.85rem; color: #92400e; display: flex; align-items: center; gap: 8px; }
 
         .stat-container { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
-        .stat-box { background: #f8fafc; padding: 15px; border-radius: 15px; text-align: center; border: 1px solid #e2e8f0; position: relative; overflow: hidden; }
+        .stat-box { background: #f8fafc; padding: 15px; border-radius: 15px; text-align: center; border: 1px solid #e2e8f0; }
         .stat-box b { display: block; font-size: 1.4rem; color: var(--accent); }
 
-        .live-status-list { background: #f1f5f9; padding: 12px; border-radius: 15px; margin-bottom: 20px; font-size: 0.8rem; border: 1px dashed #cbd5e1; }
-        .status-item { display: inline-flex; align-items: center; background: white; padding: 6px 12px; border-radius: 20px; margin: 4px; border: 1px solid #e2e8f0; font-weight: 600; animation: pulse 2s infinite; }
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
-        
+        .live-status-list { background: #f1f5f9; padding: 12px; border-radius: 15px; margin-bottom: 20px; font-size: 0.8rem; }
+        .status-item { display: inline-flex; align-items: center; background: white; padding: 6px 12px; border-radius: 20px; margin: 4px; border: 1px solid #e2e8f0; font-weight: 600; }
         .dot { width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
         .dot-work { background: var(--info); box-shadow: 0 0 8px var(--info); }
         .dot-break { background: var(--success); box-shadow: 0 0 8px var(--success); }
@@ -130,7 +128,7 @@
                     <div class="stat-box"><b id="count-work">0</b><span>İçeride</span></div>
                     <div class="stat-box"><b id="count-break">0</b><span>Molada</span></div>
                 </div>
-                <div id="live-status" class="live-status-list">Canlı Takip Yükleniyor...</div>
+                <div id="live-status" class="live-status-list">Anlık Durum Takip Ediliyor...</div>
                 
                 <div style="display:flex; gap:10px; margin-bottom: 15px;">
                     <button class="btn-act bg-break" style="padding:12px;" onclick="exportExcel()">📊 Excel Raporu</button>
@@ -209,7 +207,7 @@
 
     function checkActiveMola() {
         const today = new Date().toLocaleDateString('tr-TR');
-        db.ref('logs').orderByChild('user').equalTo(currentUser).limitToLast(5).once('value', snap => {
+        db.ref('logs').orderByChild('user').equalTo(currentUser).limitToLast(10).once('value', snap => {
             let lastStart = null; let isRunning = false;
             snap.forEach(l => {
                 if(l.val().date === today) {
@@ -276,10 +274,12 @@
             document.getElementById('admin-gate').classList.add('hidden');
             document.getElementById('admin-data').classList.remove('hidden');
             
-            // TAM ANLIK DİNLEME: Personel bir tuşa bastığında yönetici ekranı değişir
+            // CANLI DİNLEME: Burası anlık güncellemeyi sağlar
             db.ref('logs').on('value', snap => {
                 const logs = []; 
-                snap.forEach(c => logs.push(c.val()));
+                snap.forEach(child => {
+                    logs.push(child.val());
+                });
                 const report = processReport(logs);
                 window.fData = report;
                 renderAdmin(report);
@@ -298,14 +298,14 @@
             if(l.type === 'Mola Bitir') daily[id].M_Bit = l.time;
             if(l.type === 'İşten Çıkış') daily[id].Çıkış = l.time;
         });
-        return Object.values(daily).reverse();
+        // Tarihe ve isme göre sıralı, en güncel en üstte
+        return Object.values(daily).sort((a,b) => b.Tarih.localeCompare(a.Tarih) || a.İsim.localeCompare(b.İsim));
     }
 
     function renderAdmin(data) {
         const body = document.getElementById('logTableBody');
         const live = document.getElementById('live-status');
         const today = new Date().toLocaleDateString('tr-TR');
-        
         body.innerHTML = ""; 
         live.innerHTML = "<b>Anlık Durum:</b><br>";
         let inWork = 0, inBreak = 0;
@@ -315,26 +315,22 @@
             const threshold = (r.Giriş !== "-" && r.Giriş < "12:00") ? "10:30" : "13:00";
             const isLate = r.Giriş !== "-" && r.Giriş > threshold;
             
-            // ANLIK DURUM: Sadece bugün giren ve çıkmayanları listele
+            // Eğer bugün giriş yapmışsa ve henüz çıkış yapmamışsa aktiftir
             if(isToday && r.Giriş !== "-" && r.Çıkış === "-") {
                 const onBreak = r.M_Bas !== "-" && r.M_Bit === "-";
                 if(onBreak) inBreak++; else inWork++;
-                live.innerHTML += `
-                    <div class="status-item">
-                        <span class="dot ${onBreak ? 'dot-break' : 'dot-work'}"></span>
-                        ${r.İsim} ${onBreak ? '<small>(Molada)</small>' : '<small>(İçeride)</small>'}
-                    </div>`;
+                live.innerHTML += `<div class="status-item"><span class="dot ${onBreak ? 'dot-break' : 'dot-work'}"></span>${r.İsim} ${onBreak ? '(Molada)' : ''}</div>`;
             }
             body.innerHTML += `<tr><td>${r.Tarih}</td><td>${r.İsim}</td><td class="${isLate ? 'late' : ''}">${r.Giriş}</td><td>${r.M_Bas}</td><td>${r.M_Bit}</td><td>${r.Çıkış}</td></tr>`;
         });
         
-        // Sayaçları anlık güncelle
         document.getElementById('count-work').innerText = inWork;
         document.getElementById('count-break').innerText = inBreak;
-        if(inWork === 0 && inBreak === 0) live.innerHTML = "<b>Anlık Durum:</b><br><small>Şu an kimse aktif değil.</small>";
+        if(inWork === 0 && inBreak === 0) live.innerHTML += "<small>Aktif personel yok.</small>";
     }
 
     function exportExcel() {
+        if(!window.fData) return;
         const excelData = window.fData.map(r => {
             let molaSuresi = 0;
             if(r.M_Bas !== "-" && r.M_Bit !== "-") {
@@ -352,7 +348,7 @@
         const ws = XLSX.utils.json_to_sheet(excelData);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Rapor");
-        XLSX.writeFile(wb, "IklimLife_Rapor.xlsx");
+        XLSX.writeFile(wb, "IklimLife_Takip.xlsx");
     }
 
     function loadUserShift() {
@@ -401,7 +397,7 @@
                 document.getElementById('winner-name').innerText = winner;
                 const adminWinnerCard = document.getElementById('admin-winner-card');
                 if(adminWinnerCard) {
-                    adminWinnerCard.style.display = "block";
+                    adminWinnerCard.style.display = winner === "-" ? "none" : "block";
                     document.getElementById('admin-winner-display').innerText = winner;
                 }
             }
@@ -410,7 +406,7 @@
 
     function secureLogout() { currentUser=null; clearInterval(timerInterval); document.getElementById('pinCode').value=""; showView('staff'); }
     function cancelAction() { scanner.stop().then(() => showView('staff')); }
-    function clearLogs() { if(confirm("Tüm kayıtlar silinsin mi?")) db.ref('logs').set(null); }
+    function clearLogs() { if(confirm("DİKKAT: Tüm kayıtlar kalıcı olarak silinecek! Onaylıyor musunuz?")) db.ref('logs').set(null); }
 </script>
 </body>
 </html>

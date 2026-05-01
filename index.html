@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>İklim Life | Takip Premium v7.1</title>
+    <title>İklim Life | Takip Premium v7.2</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -274,12 +274,9 @@
             document.getElementById('admin-gate').classList.add('hidden');
             document.getElementById('admin-data').classList.remove('hidden');
             
-            // CANLI DİNLEME: Burası anlık güncellemeyi sağlar
             db.ref('logs').on('value', snap => {
                 const logs = []; 
-                snap.forEach(child => {
-                    logs.push(child.val());
-                });
+                snap.forEach(child => { logs.push(child.val()); });
                 const report = processReport(logs);
                 window.fData = report;
                 renderAdmin(report);
@@ -292,14 +289,16 @@
         const daily = {};
         logs.forEach(l => {
             const id = `${l.date}_${l.user}`;
-            if(!daily[id]) daily[id] = { Tarih: l.date, İsim: l.user, Giriş: "-", M_Bas: "-", M_Bit: "-", Çıkış: "-" };
+            if(!daily[id]) {
+                daily[id] = { Tarih: l.date, İsim: l.user, Giriş: "-", M_Bas: "-", M_Bit: "-", Çıkış: "-", lastTs: l.ts };
+            }
             if(l.type === 'İşe Giriş') daily[id].Giriş = l.time;
             if(l.type === 'Mola Başlat') daily[id].M_Bas = l.time;
             if(l.type === 'Mola Bitir') daily[id].M_Bit = l.time;
             if(l.type === 'İşten Çıkış') daily[id].Çıkış = l.time;
+            if(l.ts > daily[id].lastTs) daily[id].lastTs = l.ts;
         });
-        // Tarihe ve isme göre sıralı, en güncel en üstte
-        return Object.values(daily).sort((a,b) => b.Tarih.localeCompare(a.Tarih) || a.İsim.localeCompare(b.İsim));
+        return Object.values(daily).sort((a,b) => b.lastTs - a.lastTs);
     }
 
     function renderAdmin(data) {
@@ -308,25 +307,29 @@
         const today = new Date().toLocaleDateString('tr-TR');
         body.innerHTML = ""; 
         live.innerHTML = "<b>Anlık Durum:</b><br>";
+        
         let inWork = 0, inBreak = 0;
+        let activeUsers = new Set();
 
         data.forEach(r => {
             const isToday = r.Tarih === today;
             const threshold = (r.Giriş !== "-" && r.Giriş < "12:00") ? "10:30" : "13:00";
             const isLate = r.Giriş !== "-" && r.Giriş > threshold;
             
-            // Eğer bugün giriş yapmışsa ve henüz çıkış yapmamışsa aktiftir
             if(isToday && r.Giriş !== "-" && r.Çıkış === "-") {
-                const onBreak = r.M_Bas !== "-" && r.M_Bit === "-";
-                if(onBreak) inBreak++; else inWork++;
-                live.innerHTML += `<div class="status-item"><span class="dot ${onBreak ? 'dot-break' : 'dot-work'}"></span>${r.İsim} ${onBreak ? '(Molada)' : ''}</div>`;
+                if(!activeUsers.has(r.İsim)) {
+                    const onBreak = r.M_Bas !== "-" && r.M_Bit === "-";
+                    if(onBreak) inBreak++; else inWork++;
+                    live.innerHTML += `<div class="status-item"><span class="dot ${onBreak ? 'dot-break' : 'dot-work'}"></span>${r.İsim} ${onBreak ? '<small>(Molada)</small>' : '<small>(Çalışıyor)</small>'}</div>`;
+                    activeUsers.add(r.İsim);
+                }
             }
             body.innerHTML += `<tr><td>${r.Tarih}</td><td>${r.İsim}</td><td class="${isLate ? 'late' : ''}">${r.Giriş}</td><td>${r.M_Bas}</td><td>${r.M_Bit}</td><td>${r.Çıkış}</td></tr>`;
         });
         
         document.getElementById('count-work').innerText = inWork;
         document.getElementById('count-break').innerText = inBreak;
-        if(inWork === 0 && inBreak === 0) live.innerHTML += "<small>Aktif personel yok.</small>";
+        if(activeUsers.size === 0) live.innerHTML += "<small>Aktif personel yok.</small>";
     }
 
     function exportExcel() {
@@ -397,7 +400,7 @@
                 document.getElementById('winner-name').innerText = winner;
                 const adminWinnerCard = document.getElementById('admin-winner-card');
                 if(adminWinnerCard) {
-                    adminWinnerCard.style.display = winner === "-" ? "none" : "block";
+                    adminWinnerCard.style.display = "block";
                     document.getElementById('admin-winner-display').innerText = winner;
                 }
             }

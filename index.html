@@ -93,7 +93,7 @@
             <div class="premium-card">
                 <small id="shiftLabel">Bugünkü Vardiyanız</small>
                 <h4 id="userShift">Yükleniyor...</h4>
-                <div id="shiftStatus" style="font-size:0.75rem;">Sabah: 09:30 | Öğle: 13:00</div>
+                <div id="shiftStatus" style="font-size:0.75rem;">Sabah: 10:30 | Öğle: 13:00</div>
             </div>
             
             <h3 id="userName" style="text-align:center; margin-bottom:20px;"></h3>
@@ -166,6 +166,12 @@
     const db = firebase.database();
     const scanner = new Html5Qrcode("reader");
 
+    // Yardımcı: Sabit Tarih Formatı (Cihazlar arası farkı önler)
+    function getTodayStr() {
+        const d = new Date();
+        return `${d.getDate().toString().padStart(2,'0')}.${(d.getMonth() + 1).toString().padStart(2,'0')}.${d.getFullYear()}`;
+    }
+
     const STORE = {
         CODE: "MAGAZA-12345",
         PASS: "1674",
@@ -177,7 +183,7 @@
 
     function checkLocation(callback) {
         if (!navigator.geolocation) { alert("Konum gerekli."); return; }
-        navigator.geolocation.getCurrentPosition(() => { callback(); }, () => { alert("Konum izni verin!"); });
+        navigator.geolocation.getCurrentPosition(() => { callback(); }, () => { alert("Konum izni verin!"); }, {enableHighAccuracy: true});
     }
 
     function showView(v) {
@@ -206,13 +212,14 @@
     }
 
     function checkActiveMola() {
-        const today = new Date().toLocaleDateString('tr-TR');
+        const today = getTodayStr();
         db.ref('logs').orderByChild('user').equalTo(currentUser).limitToLast(10).once('value', snap => {
             let lastStart = null; let isRunning = false;
             snap.forEach(l => {
-                if(l.val().date === today) {
-                    if(l.val().type === 'Mola Başlat') { lastStart = l.val().ts; isRunning = true; }
-                    if(l.val().type === 'Mola Bitir') { isRunning = false; }
+                const val = l.val();
+                if(val.date === today) {
+                    if(val.type === 'Mola Başlat') { lastStart = val.ts; isRunning = true; }
+                    if(val.type === 'Mola Bitir') { isRunning = false; }
                 }
             });
             if(isRunning && lastStart) {
@@ -250,7 +257,7 @@
                         const d = new Date();
                         const time = d.getHours().toString().padStart(2,'0') + ":" + d.getMinutes().toString().padStart(2,'0');
                         db.ref('logs').push({ 
-                            date: d.toLocaleDateString('tr-TR'), 
+                            date: getTodayStr(), 
                             user: currentUser, 
                             type: type, 
                             time: time, 
@@ -265,7 +272,7 @@
                         });
                     });
                 }
-            });
+            }).catch(err => { alert("Kamera hatası!"); showView('staff'); });
         });
     }
 
@@ -282,7 +289,7 @@
                 renderAdmin(report);
                 calculatePerformance();
             });
-        }
+        } else alert("Yönetici Şifresi Hatalı!");
     }
 
     function processReport(logs) {
@@ -304,7 +311,7 @@
     function renderAdmin(data) {
         const body = document.getElementById('logTableBody');
         const live = document.getElementById('live-status');
-        const today = new Date().toLocaleDateString('tr-TR');
+        const today = getTodayStr();
         body.innerHTML = ""; 
         live.innerHTML = "<b>Anlık Durum:</b><br>";
         
@@ -313,10 +320,10 @@
 
         data.forEach(r => {
             const isToday = r.Tarih === today;
-            const threshold = (r.Giriş !== "-" && r.Giriş < "12:00") ? "09:30" : "13:00";
+            // Vardiya başlangıç saati 10:30 olarak güncellendi
+            const threshold = (r.Giriş !== "-" && r.Giriş < "12:00") ? "10:30" : "13:00";
             const isLate = r.Giriş !== "-" && r.Giriş > threshold;
             
-            // ANLIK DURUM MANTIĞI GÜNCELLENDİ (Kübra & Nefise Hatası Düzeltildi)
             if(isToday && r.Giriş !== "-" && r.Çıkış === "-") {
                 if(!activeUsers.has(r.İsim)) {
                     const onBreak = r.M_Bas !== "-" && r.M_Bit === "-";
@@ -357,16 +364,16 @@
 
     function loadUserShift() {
         db.ref('logs').orderByChild('user').equalTo(currentUser).limitToLast(5).once('value', snap => {
-            let lastIn = "09:30";
+            let lastIn = "10:30";
             snap.forEach(l => { if(l.val().type === 'İşe Giriş') lastIn = l.val().time; });
-            document.getElementById('userShift').innerText = lastIn < "12:00" ? "09:30" : "13:00";
+            document.getElementById('userShift').innerText = lastIn < "12:00" ? "10:30" : "13:00";
         });
     }
 
     function publishAnnouncement() {
         const msg = document.getElementById('adminMsg').value;
         if(msg) {
-            db.ref('announcement').set({ text: msg }).then(() => {
+            db.ref('announcement').set({ text: msg, ts: Date.now() }).then(() => {
                 alert("Duyuru yayınlandı!");
                 document.getElementById('adminMsg').value = "";
             });
@@ -383,20 +390,22 @@
     }
 
     function calculatePerformance() {
-        db.ref('logs').limitToLast(100).once('value', snap => {
+        db.ref('logs').limitToLast(150).once('value', snap => {
             const scores = {};
             snap.forEach(l => {
                 const log = l.val();
                 if(log.type === 'İşe Giriş') {
                     if(!scores[log.user]) scores[log.user] = 0;
-                    const threshold = log.time < "12:00" ? "09:35" : "13:05";
+                    // Tolerans payı 5 dk olarak ayarlandı
+                    const threshold = log.time < "12:00" ? "10:35" : "13:05";
                     if(log.time <= threshold) scores[log.user] += 10;
+                    else scores[log.user] -= 5; // Geç kalana ceza puanı (isteğe bağlı)
                 }
             });
-            let winner = "-"; let max = -1;
+            let winner = "-"; let max = -Infinity;
             for(let p in scores) { if(scores[p] > max) { max = scores[p]; winner = p; } }
             
-            if(winner !== "-") {
+            if(winner !== "-" && max > 0) {
                 document.getElementById('winner-card').classList.remove('hidden');
                 document.getElementById('winner-name').innerText = winner;
                 const adminWinnerCard = document.getElementById('admin-winner-card');

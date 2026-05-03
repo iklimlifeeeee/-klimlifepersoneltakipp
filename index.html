@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>İklim Life | Takip Premium v7.2</title>
+    <title>İklim Life | Takip Premium v7.5</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -53,9 +53,16 @@
         
         #reader { border-radius: 20px; overflow: hidden; border: 4px solid var(--accent); }
         #done { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); z-index: 1000; display: none; background: white; border-radius: 50%; padding: 25px; box-shadow: 0 0 50px rgba(0,0,0,0.3); font-size: 3rem; }
+        
+        /* Fotoğraf Önizleme Stil */
+        .img-preview { width: 40px; height: 40px; border-radius: 5px; cursor: zoom-in; object-fit: cover; border: 1px solid #ddd; }
+        #photo-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; display: none; align-items: center; justify-content: center; }
+        #photo-modal img { max-width: 90%; max-height: 80%; border: 5px solid white; border-radius: 10px; }
     </style>
 </head>
 <body>
+
+<div id="photo-modal" onclick="this.style.display='none'"><img id="modal-img" src=""></div>
 
 <div class="app-container">
     <div id="done">✅</div>
@@ -137,7 +144,7 @@
 
                 <div style="overflow-x:auto;">
                     <table>
-                        <thead><tr><th>Tarih</th><th>İsim</th><th>Giriş</th><th>Mola Baş</th><th>Mola Bit</th><th>Çıkış</th></tr></thead>
+                        <thead><tr><th>Kanıt</th><th>Tarih</th><th>İsim</th><th>Giriş</th><th>Mola Baş</th><th>Mola Bit</th><th>Çıkış</th></tr></thead>
                         <tbody id="logTableBody"></tbody>
                     </table>
                 </div>
@@ -146,6 +153,7 @@
 
         <div id="view-qr" class="hidden">
             <div id="reader"></div>
+            <canvas id="photo-canvas" width="320" height="240" style="display:none;"></canvas>
             <button class="btn-act bg-off" style="margin-top:15px;" onclick="cancelAction()">Vazgeç</button>
         </div>
     </div>
@@ -166,7 +174,6 @@
     const db = firebase.database();
     const scanner = new Html5Qrcode("reader");
 
-    // Yardımcı: Sabit Tarih Formatı (Cihazlar arası farkı önler)
     function getTodayStr() {
         const d = new Date();
         return `${d.getDate().toString().padStart(2,'0')}.${(d.getMonth() + 1).toString().padStart(2,'0')}.${d.getFullYear()}`;
@@ -180,6 +187,16 @@
 
     let currentUser = null;
     let timerInterval = null;
+    let notificationPermission = false;
+
+    // Bildirim İzni İste
+    if ("Notification" in window) {
+        Notification.requestPermission().then(res => { if(res === "granted") notificationPermission = true; });
+    }
+
+    function sendNotify(title, body) {
+        if(notificationPermission) new Notification(title, { body: body, icon: 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png' });
+    }
 
     function checkLocation(callback) {
         if (!navigator.geolocation) { alert("Konum gerekli."); return; }
@@ -234,6 +251,7 @@
 
     function startLiveTimer(startTime) {
         clearInterval(timerInterval);
+        let alerted = false;
         timerInterval = setInterval(() => {
             const diff = Date.now() - startTime;
             const mins = Math.floor(diff / 60000);
@@ -244,6 +262,11 @@
             document.getElementById('p-bar').style.background = progress > 100 ? "var(--danger)" : "var(--success)";
             const left = 45 - mins;
             document.getElementById('mola-left').innerText = left > 0 ? left + " dk kaldı" : "Süre Doldu!";
+            
+            if(left <= 0 && !alerted) {
+                sendNotify("Mola Süresi Doldu!", "Lütfen mesaiye dönerek mola bitişini onaylayın.");
+                alerted = true;
+            }
         }, 1000);
     }
 
@@ -253,6 +276,12 @@
             document.getElementById('view-qr').classList.remove('hidden');
             scanner.start({facingMode:"environment"}, {fps:15, qrbox:250}, res => {
                 if(res === STORE.CODE) {
+                    // Fotoğraf yakala
+                    const video = document.querySelector('#reader video');
+                    const canvas = document.getElementById('photo-canvas');
+                    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+                    const photoData = canvas.toDataURL('image/jpeg', 0.5); // Kalite %50
+
                     scanner.stop().then(() => {
                         const d = new Date();
                         const time = d.getHours().toString().padStart(2,'0') + ":" + d.getMinutes().toString().padStart(2,'0');
@@ -261,7 +290,8 @@
                             user: currentUser, 
                             type: type, 
                             time: time, 
-                            ts: Date.now() 
+                            ts: Date.now(),
+                            pic: photoData // Fotoğraf verisi ekle
                         }).then(() => {
                             document.getElementById('done').style.display='block';
                             setTimeout(() => { 
@@ -297,9 +327,9 @@
         logs.forEach(l => {
             const id = `${l.date}_${l.user}`;
             if(!daily[id]) {
-                daily[id] = { Tarih: l.date, İsim: l.user, Giriş: "-", M_Bas: "-", M_Bit: "-", Çıkış: "-", lastTs: l.ts };
+                daily[id] = { Tarih: l.date, İsim: l.user, Giriş: "-", M_Bas: "-", M_Bit: "-", Çıkış: "-", lastTs: l.ts, Pic: "" };
             }
-            if(l.type === 'İşe Giriş') daily[id].Giriş = l.time;
+            if(l.type === 'İşe Giriş') { daily[id].Giriş = l.time; daily[id].Pic = l.pic; }
             if(l.type === 'Mola Başlat') daily[id].M_Bas = l.time;
             if(l.type === 'Mola Bitir') daily[id].M_Bit = l.time;
             if(l.type === 'İşten Çıkış') daily[id].Çıkış = l.time;
@@ -320,7 +350,6 @@
 
         data.forEach(r => {
             const isToday = r.Tarih === today;
-            // Vardiya başlangıç saati 10:30 olarak güncellendi
             const threshold = (r.Giriş !== "-" && r.Giriş < "12:00") ? "10:30" : "13:00";
             const isLate = r.Giriş !== "-" && r.Giriş > threshold;
             
@@ -332,12 +361,18 @@
                     activeUsers.add(r.İsim);
                 }
             }
-            body.innerHTML += `<tr><td>${r.Tarih}</td><td>${r.İsim}</td><td class="${isLate ? 'late' : ''}">${r.Giriş}</td><td>${r.M_Bas}</td><td>${r.M_Bit}</td><td>${r.Çıkış}</td></tr>`;
+            
+            let photoHtml = r.Pic ? `<img src="${r.Pic}" class="img-preview" onclick="openPhoto('${r.Pic}')">` : "-";
+            body.innerHTML += `<tr><td>${photoHtml}</td><td>${r.Tarih}</td><td>${r.İsim}</td><td class="${isLate ? 'late' : ''}">${r.Giriş}</td><td>${r.M_Bas}</td><td>${r.M_Bit}</td><td>${r.Çıkış}</td></tr>`;
         });
         
         document.getElementById('count-work').innerText = inWork;
         document.getElementById('count-break').innerText = inBreak;
-        if(activeUsers.size === 0) live.innerHTML += "<small>Aktif personel yok.</small>";
+    }
+
+    function openPhoto(src) {
+        document.getElementById('modal-img').src = src;
+        document.getElementById('photo-modal').style.display = 'flex';
     }
 
     function exportExcel() {
@@ -350,10 +385,7 @@
                 molaSuresi = ((h2 * 60) + m2) - ((h1 * 60) + m1);
             }
             return {
-                "Tarih": r.Tarih, "İsim": r.İsim,
-                "İşe Giriş": r.Giriş, "Mola Başlangıç": r.M_Bas,
-                "Mola Bitiş": r.M_Bit, "Toplam Mola (Dk)": molaSuresi > 0 ? molaSuresi : "0",
-                "İşten Çıkış": r.Çıkış
+                "Tarih": r.Tarih, "İsim": r.İsim, "İşe Giriş": r.Giriş, "Mola (Dk)": molaSuresi, "İşten Çıkış": r.Çıkış
             };
         });
         const ws = XLSX.utils.json_to_sheet(excelData);
@@ -385,6 +417,7 @@
             if(snap.exists()) {
                 document.getElementById('announcement-view').classList.remove('hidden');
                 document.getElementById('announcement-text').innerText = snap.val().text; 
+                if(currentUser) sendNotify("İklim Life Duyuru", snap.val().text);
             }
         }); 
     }
@@ -396,30 +429,24 @@
                 const log = l.val();
                 if(log.type === 'İşe Giriş') {
                     if(!scores[log.user]) scores[log.user] = 0;
-                    // Tolerans payı 5 dk olarak ayarlandı
                     const threshold = log.time < "12:00" ? "10:35" : "13:05";
                     if(log.time <= threshold) scores[log.user] += 10;
-                    else scores[log.user] -= 5; // Geç kalana ceza puanı (isteğe bağlı)
+                    else scores[log.user] -= 5;
                 }
             });
             let winner = "-"; let max = -Infinity;
             for(let p in scores) { if(scores[p] > max) { max = scores[p]; winner = p; } }
-            
             if(winner !== "-" && max > 0) {
                 document.getElementById('winner-card').classList.remove('hidden');
                 document.getElementById('winner-name').innerText = winner;
-                const adminWinnerCard = document.getElementById('admin-winner-card');
-                if(adminWinnerCard) {
-                    adminWinnerCard.style.display = "block";
-                    document.getElementById('admin-winner-display').innerText = winner;
-                }
+                if(document.getElementById('admin-winner-display')) document.getElementById('admin-winner-display').innerText = winner;
             }
         });
     }
 
     function secureLogout() { currentUser=null; clearInterval(timerInterval); document.getElementById('pinCode').value=""; showView('staff'); }
     function cancelAction() { scanner.stop().then(() => showView('staff')); }
-    function clearLogs() { if(confirm("DİKKAT: Tüm kayıtlar kalıcı olarak silinecek! Onaylıyor musunuz?")) db.ref('logs').set(null); }
+    function clearLogs() { if(confirm("DİKKAT: Tüm kayıtlar silinecek!")) db.ref('logs').set(null); }
 </script>
 </body>
 </html>

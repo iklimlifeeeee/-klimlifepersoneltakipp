@@ -313,10 +313,10 @@
 
         data.forEach(r => {
             const isToday = r.Tarih === today;
-            // Sabah mesaisi 09:30 olarak güncellendi
             const threshold = (r.Giriş !== "-" && r.Giriş < "12:00") ? "09:30" : "13:00";
             const isLate = r.Giriş !== "-" && r.Giriş > threshold;
             
+            // ANLIK DURUM MANTIĞI GÜNCELLENDİ (Kübra & Nefise Hatası Düzeltildi)
             if(isToday && r.Giriş !== "-" && r.Çıkış === "-") {
                 if(!activeUsers.has(r.İsim)) {
                     const onBreak = r.M_Bas !== "-" && r.M_Bit === "-";
@@ -357,7 +357,7 @@
 
     function loadUserShift() {
         db.ref('logs').orderByChild('user').equalTo(currentUser).limitToLast(5).once('value', snap => {
-            let lastIn = "09:30"; // 09:30 Olarak güncellendi
+            let lastIn = "09:30";
             snap.forEach(l => { if(l.val().type === 'İşe Giriş') lastIn = l.val().time; });
             document.getElementById('userShift').innerText = lastIn < "12:00" ? "09:30" : "13:00";
         });
@@ -389,7 +389,6 @@
                 const log = l.val();
                 if(log.type === 'İşe Giriş') {
                     if(!scores[log.user]) scores[log.user] = 0;
-                    // Tolerans sınırı 09:35 olarak güncellendi
                     const threshold = log.time < "12:00" ? "09:35" : "13:05";
                     if(log.time <= threshold) scores[log.user] += 10;
                 }

@@ -172,7 +172,7 @@
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
-    const scanner = new Html5Qrcode("reader");
+    let scanner = null;
 
     function getTodayStr() {
         const d = new Date();
@@ -189,7 +189,6 @@
     let timerInterval = null;
     let notificationPermission = false;
 
-    // Bildirim İzni İste
     if ("Notification" in window) {
         Notification.requestPermission().then(res => { if(res === "granted") notificationPermission = true; });
     }
@@ -200,11 +199,27 @@
 
     function checkLocation(callback) {
         if (!navigator.geolocation) { alert("Konum gerekli."); return; }
-        navigator.geolocation.getCurrentPosition(() => { callback(); }, () => { alert("Konum izni verin!"); }, {enableHighAccuracy: true});
+        navigator.geolocation.getCurrentPosition(() => { callback(); }, () => { alert("Konum izni verin!"); }, {enableHighAccuracy: true, timeout: 5000});
     }
 
     function showView(v) {
+        // Eğer QR görünümünden çıkılıyorsa kamerayı tamamen kapat ve temizle
+        if (v !== 'qr' && scanner) {
+            try {
+                scanner.stop().then(() => {
+                    document.getElementById("reader").innerHTML = "";
+                    scanner = null;
+                }).catch(() => {
+                    document.getElementById("reader").innerHTML = "";
+                    scanner = null;
+                });
+            } catch(e) {
+                scanner = null;
+            }
+        }
+
         ['view-login','view-panel','view-qr','view-admin'].forEach(id => document.getElementById(id).classList.add('hidden'));
+        
         if(v==='staff') {
             if(currentUser) { 
                 document.getElementById('view-panel').classList.remove('hidden');
@@ -213,7 +228,10 @@
                 checkActiveMola();
                 calculatePerformance(); 
             } else { document.getElementById('view-login').classList.remove('hidden'); }
-        } else { document.getElementById('view-admin').classList.remove('hidden'); }
+        } else if(v==='admin') { 
+            document.getElementById('view-admin').classList.remove('hidden'); 
+        }
+        
         document.getElementById('t-staff').classList.toggle('active', v==='staff');
         document.getElementById('t-admin').classList.toggle('active', v==='admin');
     }
@@ -274,24 +292,36 @@
         checkLocation(() => {
             document.getElementById('view-panel').classList.add('hidden');
             document.getElementById('view-qr').classList.remove('hidden');
+            
+            // Her QR açılışında temiz bir scanner nesnesi oluştur
+            document.getElementById("reader").innerHTML = "";
+            scanner = new Html5Qrcode("reader");
+
             scanner.start({facingMode:"environment"}, {fps:15, qrbox:250}, res => {
                 if(res === STORE.CODE) {
-                    // Fotoğraf yakala
-                    const video = document.querySelector('#reader video');
-                    const canvas = document.getElementById('photo-canvas');
-                    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-                    const photoData = canvas.toDataURL('image/jpeg', 0.5); // Kalite %50
+                    let photoData = "-";
+                    try {
+                        const video = document.querySelector('#reader video');
+                        if(video) {
+                            const canvas = document.getElementById('photo-canvas');
+                            canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+                            photoData = canvas.toDataURL('image/jpeg', 0.5);
+                        }
+                    } catch(e) { console.log("Fotoğraf alınamadı"); }
 
                     scanner.stop().then(() => {
+                        scanner = null;
+                        document.getElementById("reader").innerHTML = "";
                         const d = new Date();
                         const time = d.getHours().toString().padStart(2,'0') + ":" + d.getMinutes().toString().padStart(2,'0');
+                        
                         db.ref('logs').push({ 
                             date: getTodayStr(), 
                             user: currentUser, 
                             type: type, 
                             time: time, 
                             ts: Date.now(),
-                            pic: photoData // Fotoğraf verisi ekle
+                            pic: photoData
                         }).then(() => {
                             document.getElementById('done').style.display='block';
                             setTimeout(() => { 
@@ -300,9 +330,9 @@
                                 showView('staff');
                             }, 1200);
                         });
-                    });
+                    }).catch(() => { showView('staff'); });
                 }
-            }).catch(err => { alert("Kamera hatası!"); showView('staff'); });
+            }).catch(err => { alert("Kamera başlatılamadı veya izin verilmedi!"); showView('staff'); });
         });
     }
 
@@ -362,7 +392,7 @@
                 }
             }
             
-            let photoHtml = r.Pic ? `<img src="${r.Pic}" class="img-preview" onclick="openPhoto('${r.Pic}')">` : "-";
+            let photoHtml = r.Pic && r.Pic !== "-" ? `<img src="${r.Pic}" class="img-preview" onclick="openPhoto('${r.Pic}')">` : "-";
             body.innerHTML += `<tr><td>${photoHtml}</td><td>${r.Tarih}</td><td>${r.İsim}</td><td class="${isLate ? 'late' : ''}">${r.Giriş}</td><td>${r.M_Bas}</td><td>${r.M_Bit}</td><td>${r.Çıkış}</td></tr>`;
         });
         
@@ -445,7 +475,7 @@
     }
 
     function secureLogout() { currentUser=null; clearInterval(timerInterval); document.getElementById('pinCode').value=""; showView('staff'); }
-    function cancelAction() { scanner.stop().then(() => showView('staff')); }
+    function cancelAction() { showView('staff'); }
     function clearLogs() { if(confirm("DİKKAT: Tüm kayıtlar silinecek!")) db.ref('logs').set(null); }
 </script>
 </body>

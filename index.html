@@ -100,7 +100,7 @@
             <div class="premium-card">
                 <small id="shiftLabel">Bugünkü Vardiyanız</small>
                 <h4 id="userShift">Yükleniyor...</h4>
-                <div id="shiftStatus" style="font-size:0.75rem;">Sabah: 01:24 | Öğle: 13:00</div>
+                <div id="shiftStatus" style="font-size:0.75rem;">Sabah: 09:30 | Öğle: 13:00</div>
             </div>
             
             <h3 id="userName" style="text-align:center; margin-bottom:20px;"></h3>
@@ -380,7 +380,7 @@
 
         data.forEach(r => {
             const isToday = r.Tarih === today;
-            const threshold = (r.Giriş !== "-" && r.Giriş < "12:00") ? "10:30" : "13:00";
+            const threshold = (r.Giriş !== "-" && r.Giriş < "12:00") ? "09:30" : "13:00";
             const isLate = r.Giriş !== "-" && r.Giriş > threshold;
             
             if(isToday && r.Giriş !== "-" && r.Çıkış === "-") {
@@ -426,9 +426,9 @@
 
     function loadUserShift() {
         db.ref('logs').orderByChild('user').equalTo(currentUser).limitToLast(5).once('value', snap => {
-            let lastIn = "10:30";
+            let lastIn = "09:30";
             snap.forEach(l => { if(l.val().type === 'İşe Giriş') lastIn = l.val().time; });
-            document.getElementById('userShift').innerText = lastIn < "12:00" ? "10:30" : "13:00";
+            document.getElementById('userShift').innerText = lastIn < "12:00" ? "09:30" : "13:00";
         });
     }
 
@@ -459,7 +459,7 @@
                 const log = l.val();
                 if(log.type === 'İşe Giriş') {
                     if(!scores[log.user]) scores[log.user] = 0;
-                    const threshold = log.time < "12:00" ? "10:35" : "13:05";
+                    const threshold = log.time < "12:00" ? "09:35" : "13:05";
                     if(log.time <= threshold) scores[log.user] += 10;
                     else scores[log.user] -= 5;
                 }
